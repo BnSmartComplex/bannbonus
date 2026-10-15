@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PwaRegistration } from "@/components/pwa-registration";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="th">
       <body>
+        <PwaRegistration />
         <header className="site-header">
           <nav className="site-nav" aria-label="เมนูหลัก">
             <Link className="brand" href="/">BannBonus</Link>
