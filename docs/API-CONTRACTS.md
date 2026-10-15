@@ -18,3 +18,6 @@ GET /api/v1/admin/outbox: operator sees failed/pending LINE notifications.
 400 VALIDATION_ERROR; 401 UNAUTHENTICATED; 403 FORBIDDEN; 404 NOT_FOUND; 409 CONFLICT/STALE_STATE; 422 INELIGIBLE_TECHNICIAN; 429 RATE_LIMIT; 503 EXTERNAL_INTEGRATION_UNAVAILABLE.
 ## Security
 No public customer PII in group notifications. Audit write actor, tenant, entity version, timestamp, correlation ID. Never trust client-provided availability or role.
+
+## Proposed equipment intake extension
+Booking request payload must include equipment_category (including OTHER), fault_description, and either (brand AND model_number) OR equipment_photo_upload_id(s). Reject incomplete input with field-specific 400 errors. Treat photo IDs as authenticated, tenant-scoped, validated uploads; inspect content type/size and prevent unauthorized access. After persisted booking request, enqueue research via outbox/idempotent worker. Expose separate staff-facing device research status, source references and unknown-model flag. Research cannot confirm a booking.
