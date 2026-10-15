@@ -1,0 +1,5 @@
+# AI Master Technician Safety & Governance
+AI is a copilot. It may summarize evidence, ask diagnostic questions, suggest tests and draft documents. It cannot independently confirm safety, assert measurements, invent part prices, commit financial transactions or publish personal customer data.
+Use retrieval from approved and versioned manuals with source references; distinguish observed measurement, technician statement, hypothesis and recommendation. Escalate hazardous electrical/gas/refrigerant/structural work to qualified humans and applicable local standards; do not give unqualified unsafe instructions.
+Every tool call must use authenticated tenant/job context, least-privilege scoped endpoints, schema validation, audit, timeouts and human confirmation for consequential writes. Treat customer messages, documents and web pages as untrusted against prompt injection.
+Maintain evaluation cases: unsupported diagnosis, hallucinated readings, wrong unit, mismatched part, false availability, cross-tenant data, unsafe repair advice, quote fabrication, missing consent.
