@@ -14,7 +14,7 @@ Advance booking REQUEST is free. Request is NOT a confirmed booking. Human opera
 - Beyond 5 km: propose +10 THB per additional road-route kilometer (configurable; exact rounding not yet approved).
 - Determine night pricing at customer's confirmed dispatch time; show itemized calculation before approval.
 - After 02:00, no NEW immediate emergency dispatch requests accepted; previously accepted work may continue. Whether 02:00:00 is accepted or closed should be fixed in implementation as an explicit boundary (recommended 02:00 closed).
-- Normal service opening time NOT YET CONFIRMED. Do not infer 03:00 opening or publish Google Business hours until confirmed.
+- CONFIRMED staffed dispatch hours: every day 10:00–02:00 next day (Asia/Bangkok). Ordinary rate 10:00–21:59:59; night rate 22:00–01:59:59; close new immediate dispatch at 02:00. Advance booking request form may remain online outside these hours without implying dispatch availability.
 - Advance booking intake may remain online 24/7 while actual staffed hours are separately displayed.
 
 ## Completion incentive
@@ -31,7 +31,7 @@ After customer agrees to repair and job is completed, apply a fixed 100 THB disc
 Backend-authoritative configurable pricing with effective dates and tenant/zone rules; distance via actual road routing; booking vs dispatch state machine; operator approval; audit logs; versioned quote approvals; discount eligibility tied to completed job; customer and technician UI; test coverage for 5km threshold, 22:00 and 02:00 boundaries, cross-midnight dates, rounding, discount cap, cancellations, and failed payment. Avoid putting prices solely in UI. No production deploy without human review.
 
 ## Google Business Profile
-Not updated. Opening hour unknown. Closing time for new emergency calls proposed 02:00; Google hours must reflect actual staffed operation, not 24-hour online request form. Require authorized business owner and verified access before changing listing.
+Not updated. Business owner confirmed 10:00–02:00 next day EVERY DAY. User identifies office map listing as 'DayNeramit' (unverified exact Google Maps listing/address/coordinates). Confirm listing ownership and identity before updating Google Business Profile; do not confuse DayNeramit's listing with BannBonus's business profile. Google hours must reflect actual staffed operation, not 24-hour online request form. Require authorized business owner and verified access before changing listing.
 
 ## Governance
 GOLD.md is canonical and currently states pricing/operating hours as open decisions. This proposal is a review artifact; it does NOT supersede GOLD.md or constitute deployed functionality. On owner approval, reconcile into GOLD.md through reviewed PR, then implement and test.
