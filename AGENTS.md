@@ -36,3 +36,6 @@ Reception extracts text/photos and asks customer to confirm a candidate identity
 
 ## Technical dossier audience segregation
 BN Device Intelligence and BN Tactical may compute all dossier categories internally. Reception/customer-facing agents may receive only customer-safe projection: general specs, high-level components/functions and common symptoms; exclude ranked cause hypotheses, diagnostic instructions, measurements, part recommendations and private reasoning. Technician/operator roles can retrieve full job-authorized dossier. Orchestrator must enforce audience-scoped tool results; no prompt-only access control. Never leak restricted content in LINE, exports, summaries, notifications or caches. Communicate safety-critical warnings and accurate service terms to customers.
+
+## Visual matching ownership
+BN Device Intelligence obtains manufacturer-first product/reference images, validates model applicability and usage rights, and proposes visual matches from customer uploads. Reception presents a side-by-side comparison and captures explicit customer feedback. BN Tactical treats image similarity as provisional identification only; exact model requires stronger nameplate/serial/revision evidence. Store source attribution and evidence; do not use generic photos as if they were exact-model images.
