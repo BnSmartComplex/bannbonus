@@ -13,7 +13,7 @@ Booking policy: **human team approval is mandatory** before a booking is confirm
 6. Booking changes and cancellations must be transactionally consistent, auditable, and customer-notified; handle travel and work-duration buffers.
 7. All write commands are authorized, validated, idempotent and audited; high-impact AI actions require explicit human confirmation.
 8. LINE group receives minimal PII, signed webhook verification, retry and outbox. Do not use discontinued LINE Notify. Missing credentials means NOT CONNECTED, never claim integration is live.
-9. AI Master Technician is decision support, not independent safety authority; cite approved manuals/evidence, record measurements as technician-supplied, escalate electrical/gas/other hazardous work and uncertainty. No fabricated prices, availability, test results, warranties.
+9. BN Tactical is decision support, not independent safety authority; cite approved manuals/evidence, record measurements as technician-supplied, escalate electrical/gas/other hazardous work and uncertainty. No fabricated prices, availability, test results, warranties.
 10. Separate tenant_id in business data and enforce tenant isolation from day one; single operating tenant initially. Keep system lean for three users.
 11. PDPA/privacy-by-design, least privilege, consent for case-study content, encryption, retention and deletion workflows, backups and tested restoration.
 12. GitHub changes through scoped branches/PRs and review; GOLD and state machine contract changes require human approval.
@@ -33,3 +33,6 @@ Never announce available technician while active job or unchecked-out; concurren
 Service categories and qualifications, exact zones, travel buffers, quote/pricing rules, customer identity and payment provider, LINE credentials/group ID, tech identities, booking cancellation policy, operating hours of actual human response, chosen hosting stack. Defaults must be documented as provisional and configurable.
 ## Document precedence
 GOLD.md > docs/STATE-MACHINES.md and docs/API-CONTRACTS.md > docs/ARCHITECTURE.md > AGENTS.md > implementation. In conflict, stop and propose an ADR; never silently change GOLD.
+
+## Official AI product naming
+The technician diagnostic AI assistant's official product name is **BN Tactical** (formerly referred to as อาจารย์ช่าง). BannBonus is the customer brand; BNSmart is the operating platform. All future UI, agent labels and documentation must use BN Tactical.
