@@ -1,9 +1,9 @@
--- Database-only security checks. Run with Supabase CLI against a disposable local stack.
--- The outer transaction is rolled back; do not execute this file in Production.
+-- Database-only checks. Run against a local stack or approved, isolated test project.
+-- The outer transaction is rolled back; never execute this file in Production.
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
-select plan(22);
+select plan(25);
 
 select ok(
   to_regclass('public.tenants') is not null
@@ -145,6 +145,50 @@ select ok(
                 and policyname = 'customer reads own equipment photos'
                 and cmd = 'SELECT'),
   'Storage policies exist for owner-scoped upload and read'
+);
+
+select ok(
+  exists (select 1 from pg_policies
+          where schemaname = 'public'
+            and tablename = 'research_outbox'
+            and policyname = 'deny direct access to research outbox'
+            and cmd = 'ALL'
+            and qual = 'false'
+            and with_check = 'false')
+  and exists (select 1 from pg_policies
+              where schemaname = 'public'
+                and tablename = 'audit_logs'
+                and policyname = 'deny direct access to audit logs'
+                and cmd = 'ALL'
+                and qual = 'false'
+                and with_check = 'false'),
+  'internal outbox and audit tables have explicit deny policies'
+);
+
+select ok(
+  to_regclass('public.tenant_memberships_user_id_idx') is not null
+  and to_regclass('public.booking_photos_booking_id_tenant_id_idx') is not null
+  and to_regclass('public.booking_photos_tenant_id_idx') is not null
+  and to_regclass('public.research_outbox_booking_id_tenant_id_idx') is not null
+  and to_regclass('public.research_outbox_tenant_id_idx') is not null
+  and to_regclass('public.audit_logs_actor_id_idx') is not null
+  and to_regclass('public.audit_logs_entity_id_tenant_id_idx') is not null
+  and to_regclass('public.audit_logs_tenant_id_idx') is not null,
+  'foreign keys have supporting indexes'
+);
+
+select ok(
+  (select bool_and(position('SELECT auth.uid()' in coalesce(qual, with_check, '')) > 0)
+   from pg_policies
+   where policyname in (
+     'members can view own membership',
+     'members can view own tenant',
+     'customer or staff read requests',
+     'customer or staff read photo metadata',
+     'customer uploads own equipment photos',
+     'customer reads own equipment photos'
+   )),
+  'user-scoped RLS policies evaluate auth.uid() with an initplan'
 );
 
 select * from finish();

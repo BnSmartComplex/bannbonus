@@ -1,5 +1,5 @@
--- Chang24 initial schema. Review and apply only to an isolated, approved Supabase project.
--- This starter has no production project and this migration has not been executed.
+-- Chang24 initial schema. Apply only to isolated, approved Supabase projects.
+-- This starter has no production deployment; do not apply this migration to Production.
 create extension if not exists pgcrypto;
 
 create table if not exists public.tenants (

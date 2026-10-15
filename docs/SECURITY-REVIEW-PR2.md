@@ -1,13 +1,13 @@
 # Security review — Chang24 intake PR #2
 
 - **วันที่ตรวจ:** 2026-10-15
-- **สถานะ:** ตรวจ source/diff และ dependency audit แล้ว; ยังไม่ใช่การรับรอง production
+- **สถานะ:** ตรวจ source/diff, dependency audit และ isolated Supabase test project แล้ว; ยังไม่ใช่การรับรอง Production
 - **ขอบเขต:** Next.js pages, email OTP, browser Supabase client, upload flow, SQL/RLS/storage migration, dependencies, CI workflow และเอกสาร
-- **ขอบเขตที่ไม่ได้ทำ:** ไม่สร้าง/เชื่อม Supabase project, ไม่รัน migration, ไม่ส่งอีเมล, ไม่ทดสอบผู้ใช้จริง, ไม่แก้ Firebase/Vercel production
+- **ขอบเขตที่ไม่ได้ทำ:** ไม่แตะ Supabase Production, ไม่ส่ง OTP email, ไม่ทดสอบ API ด้วยผู้ใช้จริง, ไม่เชื่อม GitHub namespace ใน Vercel, ไม่ merge PR และไม่ deploy
 
 ## สรุป
 
-ไม่พบ secret จริงหรือข้อมูลลูกค้าใน PR. `NEXT_PUBLIC_SUPABASE_URL` และ `NEXT_PUBLIC_SUPABASE_ANON_KEY` เป็นค่าที่เว้นว่างไว้; service-role/LINE values เป็นตัวอย่างที่ปิดและระบุว่า server-only. การตรวจ dependency แบบ production-only สะอาด แต่ `npm audit` ทั้งหมดรายงาน high advisory ใน dependency chain ของเครื่องมือ ESLint ฝั่ง development ตามรายละเอียดด้านล่าง.
+ไม่พบ secret จริงหรือข้อมูลลูกค้าใน PR. `NEXT_PUBLIC_SUPABASE_URL` และ `NEXT_PUBLIC_SUPABASE_ANON_KEY` เป็นค่าที่เว้นว่างไว้; service-role/LINE values เป็นตัวอย่างที่ปิดและระบุว่า server-only. มีการ apply migration เฉพาะ `chang24-test` ซึ่งตรวจแล้วว่างก่อนเริ่ม; read-only check หลัง hardening ให้ผลจริงครบ 25 invariants. tenant/RPC suite ไปถึง assertion สุดท้ายและ fixture rollback ครบ แต่ connector ไม่เปิดเผย TAP report ทั้งชุด จึงระบุเป็นหลักฐานบางส่วน ไม่ใช่ full pass. `npm audit --omit=dev` สะอาด; high advisory ที่เหลืออยู่ในสาย dependency สำหรับ ESLint ฝั่ง development.
 
 พบข้อบกพร่องก่อน merge ซึ่งแก้ใน Branch แล้ว ได้แก่ Supabase grants ที่ไม่ได้ระบุ, self-signup จาก OTP, การเลือก tenant แบบไม่ deterministic, category ที่ backend ไม่จำกัด, write ที่ไม่มี idempotency และการแก้ bucket เดิมเมื่อชน ID. ตรวจด้วย Supabase docs ว่า Data API grants เป็นคนละชั้นกับ RLS; RLS ที่ถูกต้องไม่ทำให้ role มีสิทธิ์เรียก object ได้เอง.
 
@@ -29,12 +29,12 @@
 
 ## Release gates ที่ยังเปิดอยู่
 
-1. **ห้าม Production จนกว่าจะทดสอบ Supabase จริงใน project แยก:** RLS ข้าม tenant, account ไม่มี membership, multi-membership, role operator/tenant-admin/technician, grants, RPC retry/concurrency, private Storage, owner_id และการเข้าถึง metadata/object
+1. **Integration evidence ยังไม่ครบ:** API/Auth/Storage tests, OTP no-auto-create, concurrency/idempotency race และ backup/restore rehearsal ยังไม่ได้รัน แม้ structural check 25 จุดจะผ่านและ transactional tenant/RPC suite ไปถึง assertion สุดท้าย
 2. **ห้ามรับข้อมูลบุคคลจริงจนกว่าจะอนุมัติ privacy notice/retention/deletion** และกำหนดผู้รับผิดชอบข้อมูล; timestamp/version ที่เพิ่มเป็นเพียงหลักฐานเชิงเทคนิค ไม่ใช่คำยินยอมที่ตรวจสอบทางกฎหมายแล้ว
 3. **Upload hardening:** allowlist MIME และขนาดถูกเช็กทั้ง UI/bucket แต่ยังไม่มี server-side content sniffing, malware scanning, EXIF stripping, staff image access design หรือ orphan-object retention cleanup
 4. **Abuse control:** ยังไม่มี application-level rate limit/CAPTCHA สำหรับ OTP หรือ RPC; ต้องกำหนด quota/abuse response และทดสอบก่อนเปิด public intake
 5. **Provisioning/operations:** ไม่มี workflow สร้าง tenant/membership โดยผู้ดูแล, ไม่มี staff approval/scheduling, ไม่มี outbox worker/retry monitor และไม่มี backup/restore test
-6. **Hosting:** ยังไม่มี Firebase/Vercel config หรือ production secret; ดู [ADR-0002](ADR-0002-HOSTING-OPTIONS.md). ไม่รัน migration/Deploy ในงานนี้.
+6. **Hosting/deployment:** บัญชี Vercel ปัจจุบันเชื่อม GitHub namespace `dayneramit` เท่านั้น; ค้น `BnSmartComplex/bannbonus` ได้ 0 repositories. `chang24.vercel.app` ตอบ `404 DEPLOYMENT_NOT_FOUND`. จึงไม่มี project/repository target ที่พร้อม deploy และไม่มี Production Supabase project/credentials ที่ยืนยันได้.
 7. **Existing public endpoints (GET only, 2026-10-15):** Vercel URL ตอบ `404 DEPLOYMENT_NOT_FOUND`; Firebase page แสดง claims “Production AI Active”/“ระบบจริง” แต่มีตัวเลข 0. การตรวจหน้าไม่ยืนยันว่า backend/AI เป็นจริงหรือเป็นข้อมูลจำลอง; เจ้าของระบบควรตรวจถ้อยคำและ data source ก่อนนำเสนอหรือเปลี่ยนหน้า.
 
 ## Validation
@@ -45,15 +45,15 @@
 - `npm test -- --passWithNoTests`: ผ่าน **4/4 tests** รวม category allowlist regression
 - `npm run build`: ผ่านบน Next.js 15.5.28; หน้า `/`, `/booking`, `/login`, `/my-bookings` และ `/staff` ถูก prerender เป็น static routes
 - **Static-export dry-run:** เพิ่ม `output: "export"` ชั่วคราวเฉพาะใน workspace; build ผ่านและสร้าง HTML สำหรับทุก route ข้างต้น จากนั้นลบ output/คืน `next.config.ts` เดิมแล้ว ไม่มี Firebase config หรือ deployment ถูกเพิ่ม
-- **SQL syntax:** parser ตรวจ 29 SQL statements และ PL/pgSQL body ของ `create_booking_request` ผ่าน; migration ไม่ได้ execute
+- **SQL syntax:** parser ตรวจ migration เดิมและ migration 0002 (24 statements) ผ่าน; migration 0001/0002 ถูก apply เฉพาะ `chang24-test` แล้ว
 - `git diff --check`: ผ่าน
 - `npm audit`: 5 high package entries ใน dev lint chain; `npm audit --omit=dev`: 0 advisories (Critical/High/Moderate/Low = 0)
 
-การ build/unit test/parser ไม่แทนการทดสอบ Supabase Auth, Storage, grants หรือ RLS จริง; migration นี้ยังไม่ได้ execute.
+**Supabase test evidence:** หลัง migration `0002`, read-only aggregate ตรวจ 25 schema/grant/RLS/index/bucket invariants แล้วได้ `true` ทุกข้อ. Tenant/RPC pgTAP SQL ไปถึง `ok 19 - RPC never confirms the booking automatically`; หลัง `ROLLBACK` ยืนยัน synthetic user/tenant/booking/membership/outbox/audit/storage counts เป็น 0. SQL connector แสดงเฉพาะ result row สุดท้าย จึงยังไม่มี TAP report ครบทุก assertion. Supabase advisor เหลือ warning เดียวสำหรับ `SECURITY DEFINER` RPC ซึ่งตั้งใจให้ authenticated เรียกเพื่อส่งคำขอ; grants จำกัดเฉพาะ authenticated และ function ใช้ empty `search_path`. Performance advisor ไม่พบ unindexed FK/auth-initplan warnings; รายงาน indexes ว่า unused เพราะ test tables ว่าง.
 
 ## Phase 2 — integration test preparation
 
-Added pgTAP schema/RLS/RPC suites, a read-only security snapshot, an isolated-project API harness, environment template, integration test plan, rollback plan, and production-readiness checklist. The workspace still has no authorized test project or local Supabase runtime. **No Supabase integration tests were run and no pass is claimed.** The API harness requires an explicit non-production acknowledgement and uses only anon-key client sessions; it has no service-role key and does not create or delete booking/object fixtures.
+Added pgTAP schema/RLS/RPC suites, a read-only security snapshot, an isolated-project API harness, environment template, integration test plan, rollback plan, and production-readiness checklist. The schema was applied only to the empty `chang24-test` project; no Production resource was changed. Structural SQL checks passed and the tenant/RPC test transaction rolled back all fixtures. **API/Auth/Storage tests and complete TAP output remain unverified; no Production pass is claimed.** The API harness requires an explicit non-production acknowledgement and uses only anon-key client sessions; it has no service-role key and does not create or delete booking/object fixtures.
 
 ## แหล่งอ้างอิง
 
