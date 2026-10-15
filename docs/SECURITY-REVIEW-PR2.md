@@ -51,6 +51,10 @@
 
 การ build/unit test/parser ไม่แทนการทดสอบ Supabase Auth, Storage, grants หรือ RLS จริง; migration นี้ยังไม่ได้ execute.
 
+## Phase 2 — integration test preparation
+
+Added pgTAP schema/RLS/RPC suites, a read-only security snapshot, an isolated-project API harness, environment template, integration test plan, rollback plan, and production-readiness checklist. The workspace still has no authorized test project or local Supabase runtime. **No Supabase integration tests were run and no pass is claimed.** The API harness requires an explicit non-production acknowledgement and uses only anon-key client sessions; it has no service-role key and does not create or delete booking/object fixtures.
+
 ## แหล่งอ้างอิง
 
 - [Supabase — Securing your API](https://supabase.com/docs/guides/api/securing-your-api)

@@ -22,6 +22,10 @@ This remains a proposal, not a decision to provision Supabase, Firebase App Host
 
 Final results after the hardening changes are recorded in [SECURITY-REVIEW-PR2.md](SECURITY-REVIEW-PR2.md) and the PR description. Build and unit tests do not substitute for integration tests against a real, isolated Supabase project. The SQL migration has not been executed.
 
+## Phase 2 test assets
+
+Prepared [Supabase integration test plan](SUPABASE-INTEGRATION-TEST-PLAN.md), [security verification guide](SUPABASE-SECURITY-VERIFICATION.md), [migration rollback plan](MIGRATION-ROLLBACK-PLAN.md), [production readiness checklist](PRODUCTION-READINESS-CHECKLIST.md), pgTAP tests under `supabase/tests/`, a read-only SQL snapshot, and a guarded API harness. There is still no authorized Supabase test project or local Supabase runtime in this workspace, so these integration checks are **NOT RUN / BLOCKED**. No migration was applied and no cloud resource was created or changed.
+
 ## Release gates
 
 1. Approve hosting, database, authentication, storage, and queue through an ADR without silently changing `GOLD.md`.

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:supabase:api": "node --env-file-if-exists=.env.supabase-test scripts/supabase-api-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
