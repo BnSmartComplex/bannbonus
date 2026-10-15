@@ -2,7 +2,15 @@ import { z } from "zod";
 
 export const booking = z
   .object({
-    category: z.string().trim().min(1).max(100),
+    category: z.enum([
+      "OTHER",
+      "AIR_CONDITIONER",
+      "REFRIGERATOR",
+      "WASHING_MACHINE",
+      "ELECTRICAL",
+      "PLUMBING",
+      "ELECTRONICS",
+    ]),
     fault_description: z.string().trim().min(20).max(4000),
     brand: z.string().trim().max(120),
     model_number: z.string().trim().max(120),

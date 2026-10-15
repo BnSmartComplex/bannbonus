@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { booking } from "@/lib/validation";
@@ -16,6 +16,7 @@ const categories = [
 ] as const;
 
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const idempotencyStorageKey = "chang24:booking-request-idempotency-key";
 
 type FormValues = {
   category: string;
@@ -43,8 +44,16 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const idempotencyKey = useRef<string | null>(null);
+
+  function resetIdempotencyKey() {
+    idempotencyKey.current = null;
+    window.sessionStorage.removeItem(idempotencyStorageKey);
+    setSuccess("");
+  }
 
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
+    resetIdempotencyKey();
     setValues((current) => ({ ...current, [key]: value }));
   }
 
@@ -92,6 +101,11 @@ export default function BookingPage() {
         throw new Error(parsed.error.issues.map((issue) => issue.message).join("; "));
       }
 
+      const requestKey = idempotencyKey.current
+        ?? window.sessionStorage.getItem(idempotencyStorageKey)
+        ?? crypto.randomUUID();
+      idempotencyKey.current = requestKey;
+      window.sessionStorage.setItem(idempotencyStorageKey, requestKey);
       const { data, error: requestError } = await supabase.rpc("create_booking_request", {
         p_category: parsed.data.category,
         p_fault_description: parsed.data.fault_description,
@@ -102,10 +116,13 @@ export default function BookingPage() {
         p_contact_phone: parsed.data.contact_phone,
         p_photo_paths: parsed.data.photo_paths,
         p_consent: true,
+        p_idempotency_key: requestKey,
       });
       if (requestError || !data) {
         throw new Error("บันทึกคำขอไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่");
       }
+      window.sessionStorage.removeItem(idempotencyStorageKey);
+      idempotencyKey.current = null;
       setSuccess(String(data));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "เกิดข้อผิดพลาด กรุณาลองใหม่");
@@ -157,14 +174,14 @@ export default function BookingPage() {
         </div>
         <div className="field">
           <label htmlFor="photos">รูปอุปกรณ์ (จำเป็นเมื่อไม่ทราบทั้งยี่ห้อและรุ่น)</label>
-          <input id="photos" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setFiles(Array.from(event.target.files ?? []))} />
+          <input id="photos" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => { resetIdempotencyKey(); setFiles(Array.from(event.target.files ?? [])); }} />
           <small>สูงสุด 4 รูป ขนาดไม่เกิน 5 MB ต่อรูป (JPG, PNG หรือ WebP)</small>
         </div>
         <label>
           <input type="checkbox" checked={values.consent} onChange={(event) => update("consent", event.target.checked)} />
           {" "}ยินยอมให้ใช้ข้อมูลติดต่อและรูปภาพเพื่อดำเนินการตามคำขอนี้
         </label>
-        <p><button className="btn" type="submit" disabled={busy || !values.consent}>{busy ? "กำลังส่ง…" : "ส่งคำขอ"}</button></p>
+        <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : "ส่งคำขอ"}</button></p>
         {error && <div className="error" role="alert">{error}</div>}
         {success && <div className="ok" role="status">ส่งคำขอแล้ว: {success}<p>สถานะ: PENDING_TEAM_REVIEW — ยังไม่ใช่การยืนยันนัดหมาย</p></div>}
       </form>

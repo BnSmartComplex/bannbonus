@@ -22,6 +22,10 @@ describe("booking validation", () => {
     expect(booking.safeParse(validBooking).success).toBe(false);
   });
 
+  it("rejects categories outside the supported intake list", () => {
+    expect(booking.safeParse({ ...validBooking, category: "UNREVIEWED_CATEGORY", brand: "Daikin", model_number: "FTKF" }).success).toBe(false);
+  });
+
   it("accepts a complete brand and model", () => {
     expect(
       booking.safeParse({ ...validBooking, brand: "Daikin", model_number: "FTKF" }).success,
