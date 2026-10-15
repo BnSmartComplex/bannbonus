@@ -36,3 +36,11 @@ GOLD.md > docs/STATE-MACHINES.md and docs/API-CONTRACTS.md > docs/ARCHITECTURE.m
 
 ## Official AI product naming
 The technician diagnostic AI assistant's official product name is **BN Tactical** (formerly referred to as อาจารย์ช่าง). BannBonus is the customer brand; BNSmart is the operating platform. All future UI, agent labels and documentation must use BN Tactical.
+
+## Universal equipment intake and pre-dispatch research (confirmed)
+- Accept booking requests for **all equipment categories from day one**, including an Other/Unknown category. This does NOT claim verified technical coverage of every model.
+- Require a detailed fault description (symptoms, onset, error codes where known). Require **either** both brand and model **or** at least one uploaded equipment photo when brand/model cannot be supplied. For missing/uncertain identification, request equipment overview and nameplate photos when available; never invent a model.
+- Backend validates the requirement, not only client UI. Secure photo uploads, file validation, access control, privacy and retention apply.
+- On successful booking request creation, asynchronously enqueue equipment identification and manufacturer-first manual/spec/error-code research. Do not block booking on research availability; keep booking status PENDING_REVIEW until human team confirmation.
+- Research results must include provenance, exact model/revision applicability, verification status, retrieval time and unresolved questions. BN Tactical uses only attributed evidence and presents uncertainty; human technician approves risky diagnostic/repair actions.
+- Coverage policy: intake all categories; research on demand at booking plus curate reusable verified device knowledge. No unsupported promise of complete catalog or automatic diagnosis.
