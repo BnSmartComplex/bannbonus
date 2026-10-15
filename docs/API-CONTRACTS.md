@@ -27,3 +27,6 @@ POST /api/v1/bookings/:id/device-identification-response accepts response=CONFIR
 
 ## Dossier role-scoped API responses
 GET /api/v1/customer/bookings/:id/device-overview returns customer-safe projection only: public specifications, high-level components/functions, and non-diagnostic common symptoms, with verified-source markers and no root-cause hypotheses or actionable troubleshooting/repair details. GET /api/v1/technician/jobs/:id/device-dossier returns complete evidence-backed dossier only for assigned/authorized technician or operator. Server enforces tenant/job ownership and role-based field-level serialization; do not fetch full dossier to browser then hide fields. Separate caching, downloads, logs and LINE templates by audience, with automated authorization and leak tests.
+
+## Device image comparison extension
+GET /api/v1/customer/bookings/:id/device-candidates includes reference_image_url nullable, image_source_url, license/usage_status, exact_model_image boolean, model_match_status, and customer_uploaded_image_urls scoped to booking owner. POST /api/v1/bookings/:id/device-identification-response retains customer CONFIRMED/UNSURE/UNKNOWN/REJECTED and optional correction. Serve customer photos only via authorized signed URLs; enforce content moderation/file validation, EXIF handling, source licensing, and no internal diagnosis leakage.
