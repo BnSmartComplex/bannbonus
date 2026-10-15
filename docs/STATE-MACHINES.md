@@ -16,3 +16,6 @@ CREATED -> SENT -> ACCEPTED | REJECTED | EXPIRED | CANCELLED.
 Atomic first valid acceptance wins; reject stale offers, expired offers and techs with new conflicting work.
 ## Invariants
 No active double-assignment; no overlapping confirmed bookings for same technician including travel buffer; no unverified customer promise; no missing actor/reason on override; all transitions audited; all outbound notifications sourced from persisted events.
+
+## Booking intake research sidecar
+After a valid booking request is persisted in PENDING_REVIEW, enqueue a separate idempotent device-research workflow: QUEUED -> IDENTIFYING -> RESEARCHING -> VERIFIED | NEEDS_INFO | UNVERIFIED | FAILED. This workflow never changes booking to CONFIRMED. Missing brand/model requires an uploaded equipment photo; uncertain model identification prompts staff/customer for nameplate image when available. Failures must not silently erase booking requests.
