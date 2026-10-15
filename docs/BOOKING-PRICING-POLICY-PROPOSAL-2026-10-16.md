@@ -35,3 +35,7 @@ Not updated. Business owner confirmed 10:00–02:00 next day EVERY DAY. User ide
 
 ## Governance
 GOLD.md is canonical and currently states pricing/operating hours as open decisions. This proposal is a review artifact; it does NOT supersede GOLD.md or constitute deployed functionality. On owner approval, reconcile into GOLD.md through reviewed PR, then implement and test.
+
+## Office location source provided by owner (2026-10-16)
+Google Maps share URL: https://maps.app.goo.gl/TNuQPQP3QARkbR946
+Owner labels this location 'ช่างเดย์เนรมิตร'. Short link could not be resolved by current automated fetch; coordinates, address and Google Business Profile identity remain unverified. Do not invent coordinates or activate distance pricing until validated. This is a reference office location; actual distance should originate from the assigned contractor's registered base.
