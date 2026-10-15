@@ -24,3 +24,9 @@ READ: role-scoped data only. WRITE_DRAFT: permitted with audit. WRITE_OPERATIONA
 Structured outputs with schema validation, bounded retries/timeouts, prompt injection defense, source citations for diagnostic claims, confidence/uncertainty flags, cost ceilings, event/trace logs with redaction, evaluations on safety and tool misuse.
 ## Done definition
 A story is done only with tested happy path, failure paths, permissions, audit, retry/idempotency, Thai mobile UX, accessibility and accurate user-facing statuses.
+
+## Proposed expansion: device intelligence and intake trigger
+- **BN Device Intelligence** is the dedicated equipment identification/research specialist. Trigger on booking-request creation through an idempotent asynchronous job; prioritize OEM manuals, nameplate/model evidence, revision matching and citations. Record source provenance and verification status; unknown remains unknown.
+- **BN Tactical** consumes verified model-specific evidence and job symptoms, returns differential diagnoses, missing measurements and safe next checks; it must not fabricate manuals or parts compatibility.
+- Proposed target is 1 Orchestrator + 8 specialists (9 total), including BN Device Intelligence and Quality & Warranty; the original six-specialist structure is a prior baseline, not a deployed runtime. Formal role permissions and rollout require an architecture update.
+- Booking confirmation remains human-only; AI research cannot confirm bookings or assign technicians.
