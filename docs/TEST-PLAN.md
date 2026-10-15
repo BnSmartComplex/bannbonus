@@ -19,3 +19,9 @@ T16 customer-facing 24/7 messaging never promises 24/7 technician availability.
 T17 timezone Asia/Bangkok date boundaries and DST-neutral UTC storage.
 T18 backup/restore and outbox recovery rehearsal before production.
 Each test needs actual implementation evidence and pass/fail record. No tests have been executed yet.
+
+## Customer technical disclosure acceptance cases
+- Customer with valid booking can see only public specs, high-level component descriptions and general/common symptoms; no ranked causes, diagnostic procedures, replacement recommendations, private reasoning or source fragments that reveal them.
+- Customer cannot obtain full dossier by changing URL, API route, GraphQL fields, exports, cache, push notifications, LINE messages or forged roles; expect 403 or sanitized response.
+- Assigned technician/operator sees full dossier with evidence and readiness state; unrelated technician and cross-tenant users are denied.
+- Customer receives essential safety warnings, accurate booking status and applicable service terms without exposure of internal diagnostic work.
