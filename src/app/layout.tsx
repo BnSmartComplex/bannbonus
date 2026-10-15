@@ -1,0 +1,11 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "BannBonus | ช่างออนไลน์",
+  description: "ส่งคำขอบริการช่างในกรุงเทพฯ และนนทบุรี ทีมงานตรวจสอบและยืนยันการจองก่อนให้บริการ",
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="th"><body>{children}</body></html>;
+}
