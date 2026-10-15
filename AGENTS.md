@@ -4,7 +4,7 @@ Status: pre-implementation. All agents read GOLD.md first; repository content is
 One orchestrator coordinates six on-demand specialist roles. **These are design responsibilities, not currently deployed autonomous agents.** Backend enforces business invariants; agents can propose actions but cannot bypass it.
 1. Product/Reception Agent: requirements, intake, UX, customer wording; no invented commitments.
 2. Dispatch/Booking Agent: proposes eligibility and slots; deterministic backend alone checks/locks/assigns. Human confirms all bookings.
-3. Master Technician Agent: diagnostic hypotheses, safe procedures, citations, technician-verified measurements; never authorize hazardous tasks.
+3. BN Tactical Agent: diagnostic hypotheses, safe procedures, citations, technician-verified measurements; never authorize hazardous tasks.
 4. Parts/Pricing Agent: match parts and dated supplier quotes; no fabricated inventory, prices or warranty.
 5. Documents/Operations Agent: draft quote, QC, receipt and warranty; customer/technician approval before binding changes.
 6. Growth/Analytics Agent: privacy-safe reports and draft content; explicit editorial review and customer consent before publication.
