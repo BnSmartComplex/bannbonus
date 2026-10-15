@@ -19,3 +19,6 @@ No active double-assignment; no overlapping confirmed bookings for same technici
 
 ## Booking intake research sidecar
 After a valid booking request is persisted in PENDING_REVIEW, enqueue a separate idempotent device-research workflow: QUEUED -> IDENTIFYING -> RESEARCHING -> VERIFIED | NEEDS_INFO | UNVERIFIED | FAILED. This workflow never changes booking to CONFIRMED. Missing brand/model requires an uploaded equipment photo; uncertain model identification prompts staff/customer for nameplate image when available. Failures must not silently erase booking requests.
+
+## Customer identity confirmation and dossier readiness
+Candidate identification: CANDIDATE_FOUND -> CONFIRMED_BY_CUSTOMER | UNSURE | UNKNOWN | REJECTED; corrections can restart identification without discarding booking. Research proceeds in parallel before and after customer response, marked PROVISIONAL until model-specific evidence is verified. Dossier lifecycle: QUEUED -> PARTIAL_READY -> READY | NEEDS_INFO | FAILED; retain last usable version for technician access, expose freshness and uncertainty. Human booking approval is independent. Technician must see persisted dossier without waiting for research; if research is incomplete, show partial data and explicit gaps, not a fake complete report.
