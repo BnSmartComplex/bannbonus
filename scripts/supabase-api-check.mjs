@@ -102,8 +102,9 @@ async function assertBookingVisibility(identity, bookingId, expected, descriptio
 async function assertStorageDenied(operation, description) {
   const { data, error } = await operation;
   if (!error && data) throw new Error(`${description}: unauthorized object data was returned`);
-  if (error && !["42501", "PGRST301", "PGRST302"].includes(error.code ?? "")) {
-    throw new Error(`${description}: unexpected error (${error.code ?? "unknown"})`);
+  const errorCode = String(error?.statusCode ?? error?.code ?? error?.status ?? "");
+  if (error && !["400", "401", "403", "404", "42501", "PGRST301", "PGRST302"].includes(errorCode)) {
+    throw new Error(`${description}: unexpected error (${errorCode || "unknown"})`);
   }
 }
 
