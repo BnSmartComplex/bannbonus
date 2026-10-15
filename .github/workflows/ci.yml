@@ -14,7 +14,6 @@ jobs:
         with:
           node-version: '22'
       - run: corepack enable
-      - run: npm install --package-lock-only --ignore-scripts
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
