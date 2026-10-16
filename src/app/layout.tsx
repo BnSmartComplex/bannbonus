@@ -5,7 +5,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "BannBonus | ช่างออนไลน์",
-  description: "ส่งคำขอบริการช่างในกรุงเทพฯ และนนทบุรี ทีมงานตรวจสอบและยืนยันการจองก่อนให้บริการ",
+  description: "ประสานงานช่างรับเหมาอิสระ รับงานใหม่ 10:00–02:00 น. Booking ล่วงหน้าฟรี รอเจ้าหน้าที่อนุมัติก่อนยืนยันนัด",
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -17,7 +18,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <nav className="site-nav" aria-label="เมนูหลัก">
             <Link className="brand" href="/">BannBonus</Link>
             <div className="nav-links">
-              <Link href="/booking">แจ้งซ่อม</Link>
+              <Link href="/booking">Booking</Link>
+              <Link href="/pricing">ค่าบริการ</Link>
               <Link href="/my-bookings">คำขอของฉัน</Link>
               <Link href="/staff">ทีมงาน</Link>
               <Link href="/login">เข้าสู่ระบบ</Link>
@@ -26,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </header>
         <div className="site-main">{children}</div>
         <footer className="site-footer">
-          รับคำขอได้ตลอด 24 ชั่วโมง · กรุงเทพฯ และนนทบุรี · การนัดหมายต้องรอทีมงานยืนยัน
+          ช่างรับเหมาอิสระ · รับงานใหม่ 10:00–02:00 น. · Booking ล่วงหน้าฟรี รอเจ้าหน้าที่อนุมัติ
         </footer>
       </body>
     </html>

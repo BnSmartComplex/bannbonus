@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-16",
+  "project": "qphwxusdpnsrgtarpzhs",
+  "production": false,
+  "fixturesRolledBack": true,
+  "suites": [
+    {
+      "file": "supabase/tests/0001_schema_security.test.sql",
+      "lines": [
+        "1..25",
+        "ok 1 - starter tables exist",
+        "ok 2 - RLS is enabled on every starter table",
+        "ok 3 - customer idempotency key is unique",
+        "ok 4 - booking ID and tenant have a composite unique constraint",
+        "ok 5 - photo metadata has a composite booking/tenant foreign key",
+        "ok 6 - research outbox has a composite booking/tenant foreign key",
+        "ok 7 - audit log has a composite entity/tenant foreign key",
+        "ok 8 - authenticated role has only the policy-protected read surface",
+        "ok 9 - anon role cannot read booking requests",
+        "ok 10 - authenticated role cannot bypass the RPC with direct inserts",
+        "ok 11 - authenticated role cannot update booking requests directly",
+        "ok 12 - authenticated role cannot delete booking requests directly",
+        "ok 13 - service_role has no explicit starter table grant",
+        "ok 14 - authenticated role cannot read the internal research outbox",
+        "ok 15 - authenticated role cannot read the internal audit log",
+        "ok 16 - authenticated role can call the booking RPC",
+        "ok 17 - anon role cannot call the booking RPC",
+        "ok 18 - service_role has no explicit booking RPC grant",
+        "ok 19 - booking RPC is SECURITY DEFINER with an empty search_path",
+        "ok 20 - booking queue has the expected read policy",
+        "ok 21 - equipment photo bucket is private and uses the expected limits",
+        "ok 22 - Storage policies exist for owner-scoped upload and read",
+        "ok 23 - internal outbox and audit tables have explicit deny policies",
+        "ok 24 - foreign keys have supporting indexes",
+        "ok 25 - user-scoped RLS policies evaluate auth.uid() with an initplan"
+      ]
+    },
+    {
+      "file": "supabase/tests/0002_tenant_rls_rpc.test.sql",
+      "lines": [
+        "1..19",
+        "ok 1 - customer A sees only their own tenant booking",
+        "ok 2 - customer A cannot see customer B booking",
+        "ok 3 - customer B sees only their own tenant booking",
+        "ok 4 - operator A sees tenant A booking",
+        "ok 5 - operator A cannot see tenant B booking",
+        "ok 6 - operator B sees tenant B booking",
+        "ok 7 - operator B cannot see tenant A booking",
+        "ok 8 - tenant admin A sees tenant A booking",
+        "ok 9 - technician cannot read the general booking queue",
+        "ok 10 - RPC rejects an unlisted equipment category",
+        "ok 11 - RPC rejects multiple customer memberships",
+        "ok 12 - ambiguous membership rejection creates no booking",
+        "ok 13 - RPC rejects a photo path owned by another user",
+        "ok 14 - RPC rejects a user with no customer membership",
+        "ok 15 - retry with the same idempotency key returns the same booking ID",
+        "ok 16 - idempotent retry creates one booking",
+        "ok 17 - idempotent retry creates one research outbox event",
+        "ok 18 - idempotent retry creates one audit record",
+        "ok 19 - RPC never confirms the booking automatically"
+      ]
+    }
+  ]
+}
