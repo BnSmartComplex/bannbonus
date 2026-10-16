@@ -39,3 +39,12 @@ GOLD.md is canonical and currently states pricing/operating hours as open decisi
 ## Office location source provided by owner (2026-10-16)
 Google Maps share URL: https://maps.app.goo.gl/TNuQPQP3QARkbR946
 Owner labels this location 'ช่างเดย์เนรมิตร'. Short link could not be resolved by current automated fetch; coordinates, address and Google Business Profile identity remain unverified. Do not invent coordinates or activate distance pricing until validated. This is a reference office location; actual distance should originate from the assigned contractor's registered base.
+
+## Owner's latest MASTER TASK amendments (2026-10-16; review required)
+- Daily staffed hours remain 10:00–02:00 next day.
+- Latest message changes emergency/night pricing window to 21:00–02:00 (previous proposal 22:00–02:00). **Do not enable either cutoff in live billing until owner resolves this change.**
+- Latest message states 'within 5 km free ... = 299' in same clause; this is internally inconsistent. Distinguish FREE advance booking from paid call-out/inspection. Confirm whether 299 THB is charged for dispatch within 5 km before implementing billing or publishing rates.
+- Latest message requests road-distance from technician office address. Use verified base address and routing, not map-link text or straight-line distance.
+- Beyond 5 km +10 THB/km remains proposed; require owner approval of rounding and total before departure.
+- Google Business Profile still not modified; user must authenticate to owned listing. Only hours may be changed upon authorized access.
+- Never claim production booking, LINE, payment, or live Google profile changes without verified evidence.
