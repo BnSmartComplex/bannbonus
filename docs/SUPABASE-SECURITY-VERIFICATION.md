@@ -55,3 +55,6 @@ Evidence to attach to the PR after further runs: commit SHA, non-secret environm
 - [Supabase Testing overview](https://supabase.com/docs/guides/local-development/testing/overview).
 - [Supabase pgTAP](https://supabase.com/docs/guides/database/extensions/pgtap).
 - [Supabase API security](https://supabase.com/docs/guides/api/securing-your-api).
+
+## 2026-10-16 verification update
+Both existing pgTAP suites reran successfully against the empty isolated chang24-test project: **25/25 structural checks and 19/19 RLS/RPC checks**, with every TAP line captured in [the report](verification/2026-10-16-supabase-tap.json). A temporary result table collected assertions without changing their role context. All test fixtures were rolled back; subsequent exact counts for tenants, memberships, bookings, audit/outbox, auth users and equipment photos were zero. No permanent migration was applied. Auth/Storage HTTP end-to-end tests still require isolated identities and preview configuration. The SECURITY DEFINER advisor warning remains as described above.

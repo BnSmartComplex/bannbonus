@@ -6,12 +6,12 @@ Supabase JS is pinned to 2.57.4 and npm lockfile regenerated. The previous caret
 
 PWA adds a manifest, SVG icon, production-only service worker registration and a standalone Thai offline document. Only that generic document is cached. No customer, technician, auth, API or dossier data is persisted. No background submission, job acceptance or booking confirmation is implemented. New workers use the browser's normal activation lifecycle.
 
-This is a PWA foundation, not a complete technician offline workflow. PNG/iOS icons, device installation and browser airplane-mode tests remain required. SVG installation support varies by browser.
+This is a PWA foundation, not a complete technician offline workflow. The follow-up adds PNG 192/512 and an Apple touch icon rendered from the existing SVG. Physical device installation and airplane-mode tests remain required.
 
 ## Blockers
 Codex Cloud failed to query executor configuration capabilities. Testing uses a temporary Vercel Sandbox under the existing bannbonus project instead.
 Vercel previously reported no environment variables. Auth/booking integration requires an approved non-production Supabase environment and test accounts; configure credentials via the provider, never paste secrets in chat.
-No separate Master Handoff document was supplied in this conversation; existing GOLD.md and repository specifications guide this scoped implementation.
+The 2026-10-16 MASTER TASK has now been received. GOLD.md and the consolidated booking policy are reconciled to its 22:00 night boundary; see MASTER-TASK-STATUS-2026-10-16.md for remaining workflows.
 
 ## Verification
 Run npm ci, npm audit --audit-level=high, npm run lint, npm run typecheck, npm test and npm run build. Review PR results for actual outcomes.

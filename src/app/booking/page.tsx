@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { booking } from "@/lib/validation";
+import { ServiceTerms } from "@/components/service-terms";
 
 const categories = [
   ["OTHER", "อื่น ๆ / ไม่ทราบประเภท"],
@@ -30,6 +31,7 @@ type FormValues = {
 };
 
 export default function BookingPage() {
+  const configured = Boolean(getSupabase());
   const [values, setValues] = useState<FormValues>({
     category: "OTHER",
     fault_description: "",
@@ -64,7 +66,7 @@ export default function BookingPage() {
 
     const supabase = getSupabase();
     if (!supabase) {
-      setError("ยังไม่ได้ตั้งค่า Supabase สำหรับสภาพแวดล้อมนี้");
+      setError("ระบบรับคำขอยังไม่พร้อมใช้งาน กรุณากลับมาตรวจสอบภายหลัง");
       return;
     }
 
@@ -133,12 +135,17 @@ export default function BookingPage() {
 
   return (
     <section>
-      <h1>ส่งคำขอแจ้งซ่อม</h1>
+      <h1>ส่งคำขอ Booking ล่วงหน้าฟรี</h1>
+      <p>การส่งคำขอนี้ยังไม่ใช่การเรียกช่างออกเดินทาง และไม่มีการเรียกเก็บเงิน</p>
+      <ServiceTerms />
+      {!configured && <p className="notice" role="status">ระบบรับคำขออยู่ระหว่างเตรียมเปิดให้บริการ ยังส่งคำขอไม่ได้ในขณะนี้</p>}
       <p className="notice">
         ต้องเข้าสู่ระบบก่อน · <Link href="/login">เข้าสู่ระบบ</Link> ·
         ทุกคำขอรอเจ้าหน้าที่ตรวจสอบก่อนยืนยันนัดหมาย
       </p>
       <form className="card" onSubmit={submit}>
+        <fieldset disabled={busy || !configured || Boolean(success)}>
+          <legend>ข้อมูลคำขอ</legend>
         <div className="field">
           <label htmlFor="category">หมวดอุปกรณ์</label>
           <select id="category" value={values.category} onChange={(event) => update("category", event.target.value)}>
@@ -182,6 +189,7 @@ export default function BookingPage() {
           {" "}ยินยอมให้ใช้ข้อมูลติดต่อและรูปภาพเพื่อดำเนินการตามคำขอนี้
         </label>
         <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : "ส่งคำขอ"}</button></p>
+        </fieldset>
         {error && <div className="error" role="alert">{error}</div>}
         {success && <div className="ok" role="status">ส่งคำขอแล้ว: {success}<p>สถานะ: PENDING_TEAM_REVIEW — ยังไม่ใช่การยืนยันนัดหมาย</p></div>}
       </form>
