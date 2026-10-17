@@ -6,7 +6,7 @@ import { getSupabase } from "@/lib/supabase";
 
 type Overview = { service_open: boolean; available_technicians: number; status: "AVAILABLE" | "BUSY" | "CLOSED" | "UNKNOWN"; checked_at?: string };
 
-export function LiveAvailability({ category = "OTHER", area = "NONTHABURI", compact = false, onAreaChange, onCategoryChange }: {category?: string;area?: string;compact?: boolean;onAreaChange?:(value:"BANGKOK"|"NONTHABURI")=>void;onCategoryChange?:(value:string)=>void}) {
+export function LiveAvailability({ category = "OTHER", area = "NONTHABURI", compact = false, onCategoryChange }: {category?: string;area?: string;compact?: boolean;onAreaChange?:(value:"BANGKOK"|"NONTHABURI")=>void;onCategoryChange?:(value:string)=>void}) {
   const [data, setData] = useState<Overview | null>(null);
   const [checking, setChecking] = useState(true);
   const [selectedArea, setSelectedArea] = useState(area);
