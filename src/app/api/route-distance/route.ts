@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (seconds === null) return json({ error: "DRIVING_ETA_NOT_AVAILABLE" }, 422);
     const serverNow = new Date();
     const preview = previewOfficeDeparture(serverNow, route.distanceMeters!, seconds);
-    const { rate, rounding } = approvedExtraDistancePolicy(process.env);
+    const { rate, rounding } = approvedExtraDistancePolicy();
     const quote = realtimeQuote(serverNow, route.distanceMeters!, rate, rounding);
     return json({
       distanceMeters: route.distanceMeters,
