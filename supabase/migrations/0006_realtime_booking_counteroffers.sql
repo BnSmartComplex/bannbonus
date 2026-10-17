@@ -229,3 +229,30 @@ drop trigger if exists guard_service_assignment_agreement on public.booking_appo
 create trigger guard_service_assignment_agreement before insert on public.booking_appointments
   for each row execute function public.guard_service_assignment_agreement();
 revoke all on function public.guard_service_assignment_agreement() from public,anon,authenticated,service_role;
+
+-- A verified Supabase Auth account may self-enroll only as a customer into the
+-- sole configured operating tenant. Never upgrades existing staff memberships.
+create or replace function public.join_operating_tenant_as_customer()
+returns uuid language plpgsql security definer set search_path='' as $$
+declare v_actor uuid:=auth.uid();v_tenant uuid;v_role text;
+begin
+  if v_actor is null then raise exception 'UNAUTHENTICATED'; end if;
+  if (select count(*) from public.tenants)<>1 then
+    raise exception 'OPERATING_TENANT_NOT_CONFIGURED'; end if;
+  select id into v_tenant from public.tenants limit 1;
+  select role into v_role from public.tenant_memberships
+    where tenant_id=v_tenant and user_id=v_actor;
+  if found then
+    if v_role='customer' then return v_tenant; end if;
+    raise exception 'STAFF_CANNOT_SELF_ENROLL_AS_CUSTOMER';
+  end if;
+  insert into public.tenant_memberships(tenant_id,user_id,role)
+    values(v_tenant,v_actor,'customer')
+    on conflict(tenant_id,user_id) do nothing;
+  select role into v_role from public.tenant_memberships
+    where tenant_id=v_tenant and user_id=v_actor;
+  if v_role<>'customer' then raise exception 'CUSTOMER_ENROLLMENT_DENIED'; end if;
+  return v_tenant;
+end; $$;
+revoke all on function public.join_operating_tenant_as_customer() from public,anon,authenticated,service_role;
+grant execute on function public.join_operating_tenant_as_customer() to authenticated;
