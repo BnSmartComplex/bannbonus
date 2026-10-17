@@ -8,6 +8,7 @@ insert into c1_ids(label) values
   ('dispatch_booking'), ('conflict_booking');
 create function pg_temp.c1_id(p_label text) returns uuid language sql stable
 as 'select id from pg_temp.c1_ids where label = p_label';
+grant select on c1_ids to authenticated;
 insert into auth.users(id) select id from c1_ids where label in ('operator', 'technician', 'customer');
 insert into public.tenants(id, name) values (pg_temp.c1_id('tenant'), 'C1 isolated tenant');
 insert into public.tenant_memberships(tenant_id, user_id, role) values
