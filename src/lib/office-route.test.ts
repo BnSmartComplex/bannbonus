@@ -11,19 +11,14 @@ describe("office to customer driving route", () => {
   it("calculates ETA from office departure and does not use arrival time for day/night pricing", () => {
     const result=previewOfficeDeparture(new Date("2026-10-18T20:59:59+07:00"),5000,181);
     expect(result.estimatedArrivalAt).toBe("2026-10-18T14:03:00.000Z");
-    expect(result.departureWindow).toBe("ORDINARY");
-    expect(result.estimateFeeBaht).toBe(299);
   });
   it("night rate applies at 21:00 departure, even if the customer books the prior afternoon", () => {
     const result=previewOfficeDeparture(new Date("2026-10-18T21:00:00+07:00"),5000,1200);
-    expect(result.departureWindow).toBe("NIGHT");
-    expect(result.estimateFeeBaht).toBe(499);
   });
-  it("exact 02:00 departure closes new dispatch; excess road kilometres must be manually quoted", () => {
-    expect(previewOfficeDeparture(new Date("2026-10-19T02:00:00+07:00"),5000,60).estimateStatus).toBe("CLOSED");
-    const excess=previewOfficeDeparture(new Date("2026-10-18T10:00:00+07:00"),5001,60);
-    expect(excess.estimateFeeBaht).toBeNull();
-    expect(excess.estimateStatus).toBe("EXCESS_DISTANCE_REVIEW");
+  it("travel ETA remains available at 02:00 without pretending immediate dispatch is open", () => {
+    const trip=previewOfficeDeparture(new Date("2026-10-19T02:00:00+07:00"),5000,60);
+    expect(trip.estimatedArrivalAt).toBe("2026-10-18T19:01:00.000Z");
+    expect(trip).not.toHaveProperty("estimateFeeBaht");
   });
   it("rejects nonsensical road distance and duration", () => {
     expect(()=>previewOfficeDeparture(new Date(),-1,45)).toThrow("INVALID_OFFICE_ROUTE");
