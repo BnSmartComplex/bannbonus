@@ -57,7 +57,16 @@ export default function OperatorBookingsPage(){
   if(!tech){setMessage("กรุณาเลือกช่างที่จะรับงาน");return;}
   let range:{startIso:string;endIso:string};
   if(item.request_mode==="IMMEDIATE"){
-   const start=new Date(Date.now()+10*60_000);
+   // Keep the estimated start within the current service/price segment.
+   // Never fabricate a slot ten minutes ahead across 21:00 or 02:00.
+   const now=new Date();
+   const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(now);
+   const unit=(name:string)=>Number(parts.find(part=>part.type===name)?.value??0);
+   const hour=unit("hour"),minute=unit("minute"),second=unit("second");
+   const remains=(hour===20||hour===1)?3600-minute*60-second:Number.POSITIVE_INFINITY;
+   const offsetMs=Math.min(30_000,(remains-10)*1000);
+   if(offsetMs<5_000){setMessage("เวลาใกล้เปลี่ยนช่วงบริการหรือราคาเกินไป กรุณาเลือก Booking แทนเพื่อป้องกันยืนยันเวลาผิด");return;}
+   const start=new Date(now.getTime()+offsetMs);
    const end=new Date(start.getTime()+60*60_000);
    range={startIso:start.toISOString(),endIso:end.toISOString()};
   }else{
