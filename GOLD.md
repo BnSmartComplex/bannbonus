@@ -54,6 +54,12 @@ Research all four dossier categories internally from booking time. Customer-faci
 ## Confirmed: customer-facing visual device comparison
 At booking, fetch a legitimately reusable reference product image for each plausible candidate model (OEM/manufacturer preferred) and show it alongside any customer-uploaded equipment image. Display brand/model, source, and whether the image is exact-model verified or illustrative only. Let customer respond CONFIRMED/UNSURE/UNKNOWN/REJECTED; continue research regardless. Never claim that visual similarity alone verifies exact model/revision. If no trusted/licensed reference image is available, show a clear no-reference state rather than unrelated stock imagery. Secure customer photos and strip metadata as appropriate; enforce access controls, licensing and image-source attribution. Public display must not reveal internal diagnostic hypotheses.
 
+## Owner-confirmed website ownership / roles (2026-10-18)
+- **`chang24.vercel.app` = public CUSTOMER site** (เรียกช่าง, Booking, customer login, pricing and tracking).
+- **`bannbonus.vercel.app` = internal STAFF site** for technicians and Admin/operators (own jobs, presence, scheduling and dispatch/approval).
+- Two existing Vercel projects may share the same tested application source and the **same environment-specific booking backend**, but MUST use separate portal mode and strict tenant/RLS/role checks. The staff portal is not a customer storefront; customer portal may not expose staff routes. No new accounts or data copies are authorized.
+- Env configuration by itself does not upgrade an already-deployed build. The hosted customer/staff production environments and real user permissions require independent end-to-end UAT before promotion. See `docs/DECISIONS/0006-chang24-customer-bannbonus-staff-portal.md`.
+
 ## Chang24 / Day Neramit ONLY — owner-approved realtime pricing override (2026-10-18)
 This scoped owner-confirmed rule applies only to the **ช่าง24 / ช่างเดย์เนรมิตร** service implementation, NOT to the general BannBonus marketplace and not to other independent contractors' bases. It supersedes contrary Chang24 statements below; unrelated marketplace terms remain unchanged.
 - Office origin: owner-supplied https://maps.app.goo.gl/pY1ei9UqgVJrqxV76 (Day Neramit, Bang Yai); customer destination is the customer-confirmed address or consented GPS. Measure real **road driving kilometres** and estimated trip duration, NOT straight line, from this office to customer.
