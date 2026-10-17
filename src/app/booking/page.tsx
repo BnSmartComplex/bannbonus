@@ -7,6 +7,7 @@ import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { booking } from "@/lib/validation";
 import { ServiceTerms } from "@/components/service-terms";
+import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 
 const categories = [
   ["OTHER", "อื่น ๆ / ไม่ทราบประเภท"],
@@ -26,7 +27,9 @@ type FormValues = {
   fault_description: string;
   brand: string;
   model_number: string;
-  area: "BANGKOK" | "NONTHABURI";
+  area: "NONTHABURI";
+  district: "BANG_YAI" | "BANG_BUA_THONG";
+  service_address: string;
   contact_name: string;
   contact_phone: string;
   consent: boolean;
@@ -40,10 +43,8 @@ export default function BookingPage() {
     const query = new URLSearchParams(window.location.search);
     setMode(query.get("mode") === "IMMEDIATE" ? "IMMEDIATE" : "BOOKING");
     const category = query.get("category");
-    const area = query.get("area");
     setValues(current => ({...current,
       category: category && categories.some(([key]) => key === category) ? category : current.category,
-      area: area === "BANGKOK" || area === "NONTHABURI" ? area : current.area,
     }));
   }, []);
   const [values, setValues] = useState<FormValues>({
@@ -52,11 +53,18 @@ export default function BookingPage() {
     brand: "",
     model_number: "",
     area: "NONTHABURI",
+    district: "BANG_YAI",
+    service_address: "",
     contact_name: "",
     contact_phone: "",
     consent: false,
   });
   const [files, setFiles] = useState<File[]>([]);
+  const [customerCoords, setCustomerCoords] = useState<{latitude:number;longitude:number}|null>(null);
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [geoMessage, setGeoMessage] = useState("");
+  const [checkingDistance, setCheckingDistance] = useState(false);
+  const [distance, setDistance] = useState<{distanceMeters:number;estimateStatus:string;estimateFeeBaht:number|null}|null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -71,6 +79,61 @@ export default function BookingPage() {
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     resetIdempotencyKey();
     setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function useMyLocation() {
+    setDistance(null);
+    setGeoMessage("");
+    setLocationConfirmed(false);
+    if (!navigator.geolocation) {
+      setGeoMessage("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง กรุณากรอกที่อยู่เพื่อให้เจ้าหน้าที่ตรวจสอบ");
+      return;
+    }
+    setCheckingDistance(true);
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+      const point = { latitude: coords.latitude, longitude: coords.longitude };
+      setCustomerCoords(point);
+      resetIdempotencyKey();
+      setGeoMessage("ได้รับพิกัดจากอุปกรณ์แล้ว โปรดยืนยันว่าตำแหน่งนี้ตรงกับบ้านที่ต้องการให้ช่างไป");
+      const supabase = getSupabase();
+      const { data: { session } } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      if (!session) {
+        setGeoMessage("ได้รับพิกัดแล้ว กรุณาเข้าสู่ระบบก่อนตรวจระยะทาง หรือให้เจ้าหน้าที่ตรวจสอบภายหลัง");
+        setCheckingDistance(false);
+        return;
+      }
+      try {
+        const response = await fetch("/api/route-distance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify(point),
+          cache: "no-store",
+        });
+        const result = await response.json();
+        if (response.ok && typeof result.distanceMeters === "number") {
+          setDistance(result);
+        } else {
+          setGeoMessage("ได้รับพิกัดแล้ว แต่ยังคำนวณระยะทางจริงไม่ได้ กรุณายืนยันที่อยู่เพื่อรอเจ้าหน้าที่ตรวจสอบ");
+        }
+      } catch {
+        setGeoMessage("ได้รับพิกัดแล้ว แต่บริการคำนวณเส้นทางไม่พร้อมใช้งาน");
+      } finally {
+        setCheckingDistance(false);
+      }
+    }, () => {
+      setCustomerCoords(null);
+      setGeoMessage("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณากรอกที่อยู่ให้ครบเพื่อให้เจ้าหน้าที่ตรวจสอบ");
+      setCheckingDistance(false);
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 });
+  }
+
+  function openDirections() {
+    if (!customerCoords) return;
+    const origin = encodeURIComponent(dayNeramitBusiness.officeAddress);
+    const destination = encodeURIComponent(`${customerCoords.latitude},${customerCoords.longitude}`);
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`, "_blank", "noopener,noreferrer");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -103,6 +166,7 @@ export default function BookingPage() {
         throw new Error("รูปต้องเป็น JPG, PNG หรือ WebP และมีขนาดไม่เกิน 5 MB ต่อรูป");
       }
 
+      if (values.service_address.trim().length < 15) throw new Error("กรุณากรอกที่อยู่บ้านหรือสถานที่นัดให้ครบถ้วน");
       const draft = booking.safeParse({ ...values, photo_paths: files.map(() => "pending") });
       if (!draft.success) {
         throw new Error(draft.error.issues.map((issue) => issue.message).join("; "));
@@ -130,12 +194,15 @@ export default function BookingPage() {
         ?? crypto.randomUUID();
       idempotencyKey.current = requestKey;
       window.sessionStorage.setItem(idempotencyStorageKey, requestKey);
-      const { data, error: requestError } = await supabase.rpc("create_service_request", {
+      const { data, error: requestError } = await supabase.rpc("create_chang24_service_request", {
         p_category: parsed.data.category,
         p_fault_description: parsed.data.fault_description,
         p_brand: parsed.data.brand,
         p_model_number: parsed.data.model_number,
-        p_area: parsed.data.area,
+        p_district: values.district,
+        p_service_address: values.service_address.trim(),
+        p_latitude: locationConfirmed ? customerCoords?.latitude ?? null : null,
+        p_longitude: locationConfirmed ? customerCoords?.longitude ?? null : null,
         p_contact_name: parsed.data.contact_name,
         p_contact_phone: parsed.data.contact_phone,
         p_photo_paths: parsed.data.photo_paths,
@@ -150,7 +217,7 @@ export default function BookingPage() {
           setMode("BOOKING");
           throw new Error("ขณะนี้เรียกช่างทันทีไม่ได้ กรุณาเลือกวันและเวลา Booking ล่วงหน้า");
         }
-        throw new Error("บันทึกคำขอไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่");
+        throw new Error("เรียกช่างหรือนัดหมายไม่สำเร็จ กรุณาตรวจสอบที่อยู่และลองใหม่");
       }
       submitted = true;
       window.sessionStorage.removeItem(idempotencyStorageKey);
@@ -174,22 +241,22 @@ export default function BookingPage() {
   return (
     <section>
       <span className="section-kicker">DAY NERAMIT · SERVICE REQUEST</span>
-      <h1>เรียกช่างทันที / Booking ล่วงหน้า</h1>
+      <h1>เรียกช่าง / นัดหมายช่าง</h1>
       <p className="muted">เรียกทันทีในช่วง 10:00–02:00 น. เมื่อช่างพร้อม · จองวันและเวลาอื่นได้ตลอด 24 ชั่วโมง</p>
       <div className="request-modes" role="group" aria-label="เลือกประเภทคำขอ">
         <button type="button" className={mode === "IMMEDIATE" ? "active" : ""} onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่างทันที</button>
-        <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>Booking ล่วงหน้า 24 ชั่วโมง</button>
+        <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า</button>
       </div>
       <LiveAvailability compact category={values.category} area={values.area} onAreaChange={area=>update("area",area)} onCategoryChange={category=>update("category",category)}/>
-      <p className="notice">การส่งคำขอยังไม่ใช่การยืนยันมีช่างออกเดินทาง ทีมงานต้องตรวจสอบและช่างต้องรับงานก่อน</p>
+      <p className="notice">เมื่อกดเรียกช่างหรือนัดหมาย ทีมงานจะตรวจสอบก่อนยืนยัน ช่างยังไม่ออกเดินทางจนกว่าจะตกลงรายละเอียด</p>
       {!configured && <p className="notice" role="status">ระบบรับคำขออยู่ระหว่างเตรียมเปิดให้บริการ ยังส่งคำขอไม่ได้ในขณะนี้</p>}
       <p className="notice">
         ต้องเข้าสู่ระบบก่อน · <Link href="/login">เข้าสู่ระบบ</Link> ·
-        ทุกคำขอรอเจ้าหน้าที่ตรวจสอบก่อนยืนยันนัดหมาย
+        ทีมงานจะตรวจสอบก่อนยืนยันวันเวลา
       </p>
       <form className="card" onSubmit={submit}>
         <fieldset disabled={busy || !configured || Boolean(success)}>
-          <legend>{mode === "IMMEDIATE" ? "ข้อมูลเรียกช่างตอนนี้" : "ข้อมูล Booking ล่วงหน้า"}</legend>
+          <legend>{mode === "IMMEDIATE" ? "ข้อมูลเรียกช่างตอนนี้" : "ข้อมูลนัดหมาย"}</legend>
           {mode === "BOOKING" && <div className="schedule-grid">
             <div className="field"><label htmlFor="booking-date">วันที่ต้องการ *</label><input id="booking-date" type="date" required value={scheduleDraft.date} onChange={e=>{setScheduleDraft(v=>({...v,date:e.target.value}));resetIdempotencyKey();}}/></div>
             <div className="field"><label htmlFor="booking-start">เวลาเริ่ม *</label><input id="booking-start" type="time" required value={scheduleDraft.startTime} onChange={e=>{setScheduleDraft(v=>({...v,startTime:e.target.value}));resetIdempotencyKey();}}/></div>
@@ -215,11 +282,44 @@ export default function BookingPage() {
           <input id="model" maxLength={120} value={values.model_number} onChange={(event) => update("model_number", event.target.value)} />
         </div>
         <div className="field">
-          <label htmlFor="area">พื้นที่</label>
-          <select id="area" value={values.area} onChange={(event) => update("area", event.target.value as FormValues["area"])}>
-            <option value="NONTHABURI">นนทบุรี</option>
-            <option value="BANGKOK">กรุงเทพมหานคร</option>
+          <label htmlFor="district">อำเภอที่ต้องการให้ช่างไป *</label>
+          <select id="district" required value={values.district}
+            onChange={(event) => { update("district", event.target.value as FormValues["district"]); setDistance(null); }}>
+            <option value="BANG_YAI">บางใหญ่</option>
+            <option value="BANG_BUA_THONG">บางบัวทอง</option>
           </select>
+          <small>ให้บริการหลักในบางใหญ่และบางบัวทอง หากอยู่นอกพื้นที่โปรดติดต่อทีมงานก่อน</small>
+        </div>
+        <div className="field">
+          <label htmlFor="service-address">ที่อยู่ที่ต้องการให้ช่างไป *</label>
+          <textarea id="service-address" required minLength={15} maxLength={600}
+            placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน ตำบล จุดสังเกต และรหัสไปรษณีย์"
+            value={values.service_address}
+            onChange={event => { update("service_address", event.target.value); setDistance(null); }}/>
+          <small>สำนักงานช่าง: {dayNeramitBusiness.officeAddress} · <a href={dayNeramitBusiness.officeMapUrl} target="_blank" rel="noopener noreferrer">ดูตำแหน่งสำนักงานบน Google Maps</a></small>
+        </div>
+        <div className="card" style={{margin:"14px 0"}}>
+          <strong>ตำแหน่งบ้านและระยะทาง</strong>
+          <p className="muted">กดอนุญาตตำแหน่งจากอุปกรณ์เฉพาะเมื่อคุณอยู่ที่บ้านหรือสถานที่นัด หากไม่อยู่ที่นั่นให้กรอกที่อยู่ไว้ก่อนเพื่อให้ทีมงานตรวจสอบ</p>
+          <button className="btn btn-outline" type="button" onClick={useMyLocation} disabled={checkingDistance}>
+            {checkingDistance ? "กำลังตรวจระยะทาง…" : "ใช้ตำแหน่งปัจจุบันของฉัน"}
+          </button>
+          {customerCoords && <label style={{display:"block",marginTop:12}}>
+            <input type="checkbox" checked={locationConfirmed} onChange={event=>{setLocationConfirmed(event.target.checked);resetIdempotencyKey();}}/>
+            {" "}ยืนยันว่าพิกัดนี้คือสถานที่ที่จะให้ช่างไป
+          </label>}
+          {geoMessage && <p className="notice" role="status">{geoMessage}</p>}
+          {distance && <div className="notice" role="status">
+            ระยะทางขับรถจากสำนักงานโดยประมาณ: {(distance.distanceMeters / 1000).toFixed(2)} กม.
+            <p>{distance.estimateStatus === "EXCESS_DISTANCE_REVIEW"
+              ? "เกิน 5 กม. ต้องรอทีมงานตรวจสอบค่าเดินทาง"
+              : distance.estimateStatus === "ESTIMATE"
+                ? `ค่าออกตรวจเบื้องต้น ${distance.estimateFeeBaht} บาท (ยังไม่ใช่ราคาที่อนุมัติ)`
+                : "ยังไม่สามารถยืนยันราคาได้"}</p>
+            <small>เส้นทางจากสำนักงานเป็นข้อมูลเบื้องต้น หากช่างออกจากฐานอื่น ต้องตรวจสอบระยะทางใหม่ก่อนยืนยันราคา</small>
+          </div>}
+          {customerCoords && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางขับรถบน Google Maps</button></p>}
+          {!distance && <p className="muted">ยังไม่ยืนยันระยะทางตามถนนและค่าบริการ เจ้าหน้าที่จะตรวจสอบก่อนนัดหมายหรือออกเดินทาง</p>}
         </div>
         <div className="field">
           <label htmlFor="contact-name">ชื่อผู้ติดต่อ *</label>
@@ -238,10 +338,10 @@ export default function BookingPage() {
           <input type="checkbox" checked={values.consent} onChange={(event) => update("consent", event.target.checked)} />
           {" "}ยินยอมให้ใช้ข้อมูลติดต่อและรูปภาพเพื่อดำเนินการตามคำขอนี้
         </label>
-        <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : "ส่งคำขอ"}</button></p>
+        <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : mode === "IMMEDIATE" ? "เรียกช่าง" : "นัดหมายช่าง"}</button></p>
         </fieldset>
         {error && <div className="error" role="alert">{error}</div>}
-        {success && <div className="ok" role="status">รับคำขอแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูรายการจองของฉัน →</Link></p></div>}
+        {success && <div className="ok" role="status">ส่งเรื่องถึงทีมช่างแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูการเรียกช่างและนัดหมายของฉัน →</Link></p></div>}
       </form>
       <ServiceTerms />
     </section>
