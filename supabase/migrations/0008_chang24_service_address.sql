@@ -4,6 +4,8 @@
 alter table public.booking_requests
   add column if not exists service_district text,
   add column if not exists service_address text,
+  add column if not exists service_latitude numeric(10,7),
+  add column if not exists service_longitude numeric(10,7),
   add column if not exists address_verification_status text not null default 'PENDING_OPERATOR_REVIEW',
   add column if not exists road_distance_meters integer,
   add column if not exists road_distance_verified_at timestamptz,
@@ -15,6 +17,10 @@ alter table public.booking_requests
   check (service_district is null or service_district in ('BANG_YAI','BANG_BUA_THONG')),
   add constraint chang24_service_address_valid
   check (service_address is null or char_length(btrim(service_address)) between 15 and 600),
+  add constraint chang24_coordinates_paired check (
+    (service_latitude is null and service_longitude is null)
+    or (service_latitude between 5 and 21 and service_longitude between 97 and 106)
+  ),
   add constraint chang24_address_status_allowed
   check (address_verification_status in ('PENDING_OPERATOR_REVIEW','VERIFIED','REJECTED')),
   add constraint chang24_route_verified_together
@@ -35,6 +41,8 @@ create or replace function public.create_chang24_service_request(
   p_model_number text,
   p_district text,
   p_service_address text,
+  p_latitude numeric,
+  p_longitude numeric,
   p_contact_name text,
   p_contact_phone text,
   p_photo_paths text[],
@@ -56,6 +64,10 @@ begin
   if p_service_address is null or char_length(btrim(p_service_address)) not between 15 and 600 then
     raise exception 'SERVICE_ADDRESS_REQUIRED';
   end if;
+  if not ((p_latitude is null and p_longitude is null) or
+    (p_latitude between 5 and 21 and p_longitude between 97 and 106)) then
+    raise exception 'INVALID_CUSTOMER_COORDINATES';
+  end if;
   -- Exact retry is idempotent only for identical destination/mode information.
   -- On retries from the legacy interface, missing destination must fail closed.
   select * into v_existing from public.booking_requests
@@ -63,6 +75,8 @@ begin
   if found then
     if v_existing.service_district is distinct from p_district
       or v_existing.service_address is distinct from btrim(p_service_address)
+      or v_existing.service_latitude is distinct from p_latitude
+      or v_existing.service_longitude is distinct from p_longitude
       or v_existing.request_mode is distinct from p_mode
     then raise exception 'REQUEST_RETRY_DATA_MISMATCH'; end if;
     return v_existing.id;
@@ -78,6 +92,8 @@ begin
   update public.booking_requests
   set service_district=p_district,
       service_address=btrim(p_service_address),
+      service_latitude=p_latitude,
+      service_longitude=p_longitude,
       address_verification_status='PENDING_OPERATOR_REVIEW'
   where id=v_booking and customer_id=v_actor
     and service_district is null and service_address is null;
@@ -88,7 +104,7 @@ begin
 end;
 $$;
 revoke all on function public.create_chang24_service_request(
-  text,text,text,text,text,text,text,text,text[],boolean,uuid,text,timestamptz,timestamptz
+  text,text,text,text,text,text,numeric,numeric,text,text,text[],boolean,uuid,text,timestamptz,timestamptz
 ) from public,anon,authenticated,service_role;
 grant execute on function public.create_chang24_service_request(
   text,text,text,text,text,text,text,text,text[],boolean,uuid,text,timestamptz,timestamptz
