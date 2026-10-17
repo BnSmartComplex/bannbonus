@@ -22,6 +22,30 @@ const categories = [
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const idempotencyStorageKey = "chang24:booking-request-idempotency-key";
 
+type RoutePricing = {
+  status: "QUOTABLE" | "CLOSED" | "PRICING_NOT_APPROVED";
+  requestAt: string;
+  distanceMeters: number;
+  extraMeters: number;
+  baseFeeBaht: number | null;
+  extraFeeBaht: number | null;
+  totalBaht: number | null;
+  rounding: "PRO_RATA" | "CEIL_KILOMETRE" | null;
+};
+type RouteQuote = {
+  distanceMeters: number;
+  durationMinutes: number;
+  departureAt: string;
+  estimatedArrivalAt: string;
+  pricing: RoutePricing;
+  approvedExcessRateBahtPerKm: number | null;
+};
+type PricePopup =
+  | { kind: "QUOTE" | "RATE_PENDING"; route: RouteQuote }
+  | { kind: "CLOSED" | "UNAVAILABLE" };
+const baht = (value: number | null) =>
+  value === null ? "ยังไม่กำหนด" : value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " บาท";
+
 type FormValues = {
   category: string;
   fault_description: string;
@@ -64,19 +88,38 @@ export default function BookingPage() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [geoMessage, setGeoMessage] = useState("");
   const [checkingDistance, setCheckingDistance] = useState(false);
-  const [distance, setDistance] = useState<{
-    distanceMeters: number;
-    durationMinutes: number;
-    departureAt: string;
-    estimatedArrivalAt: string;
-    departureWindow: "ORDINARY" | "NIGHT" | "CLOSED";
-    estimateStatus: string;
-    estimateFeeBaht: number | null;
-  } | null>(null);
+  const [distance, setDistance] = useState<RouteQuote | null>(null);
+  const [popup, setPopup] = useState<PricePopup | null>(null);
+  const [realtimeOpen, setRealtimeOpen] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
   const idempotencyKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const check = async () => {
+      try {
+        const response = await fetch("/api/realtime-window", {cache:"no-store"});
+        const data = await response.json();
+        if(active && response.ok && typeof data.realtimeOpen === "boolean") {
+          setRealtimeOpen(data.realtimeOpen);
+        }
+      } catch { if(active) setRealtimeOpen(null); }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 20_000);
+    const onVisible = () => { if(document.visibilityState === "visible") void check(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { active=false;window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible); };
+  }, []);
+
+  useEffect(() => {
+    if (mode === "IMMEDIATE" && realtimeOpen === false) {
+      setMode("BOOKING");
+      setPopup({kind:"CLOSED"});
+    }
+  }, [mode, realtimeOpen]);
 
   function resetIdempotencyKey() {
     idempotencyKey.current = null;
@@ -165,8 +208,94 @@ export default function BookingPage() {
     window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`, "_blank", "noopener,noreferrer");
   }
 
+  async function showRealtimePopup() {
+    setError("");
+    if (values.service_address.trim().length < 15) {
+      setError("กรุณากรอกที่อยู่บ้านหรือจุดนัดหมายให้ครบก่อนเรียกช่าง");
+      return;
+    }
+    const supabase = getSupabase();
+    const {data:{session}} = supabase
+      ? await supabase.auth.getSession()
+      : {data:{session:null}};
+    if(!session) {
+      setError("กรุณาเข้าสู่ระบบก่อนกดเรียกช่าง");
+      return;
+    }
+    setBusy(true);
+    try {
+      const gateRes = await fetch("/api/realtime-window", {cache:"no-store"});
+      if(!gateRes.ok) throw new Error("SERVICE_CLOCK_UNAVAILABLE");
+      const gate = await gateRes.json();
+      setRealtimeOpen(Boolean(gate.realtimeOpen));
+      if(!gate.realtimeOpen) {
+        setMode("BOOKING");
+        setPopup({kind:"CLOSED"});
+        return;
+      }
+      const destination = locationConfirmed && customerCoords
+        ? customerCoords
+        : {address:values.service_address.trim(),district:values.district};
+      const routeResponse = await fetch("/api/route-distance", {
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},
+        body:JSON.stringify(destination),cache:"no-store",
+      });
+      if(!routeResponse.ok) {
+        setPopup({kind:"UNAVAILABLE"});
+        return;
+      }
+      const route = await routeResponse.json() as RouteQuote;
+      setDistance(route);
+      if(route.pricing.status === "CLOSED") {
+        setMode("BOOKING");
+        setPopup({kind:"CLOSED"});
+      } else if(route.pricing.status === "PRICING_NOT_APPROVED") {
+        setPopup({kind:"RATE_PENDING",route});
+      } else if(route.pricing.status === "QUOTABLE") {
+        setPopup({kind:"QUOTE",route});
+      } else {
+        setPopup({kind:"UNAVAILABLE"});
+      }
+    } catch {
+      setPopup({kind:"UNAVAILABLE"});
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmRealtimePopup() {
+    if(popup?.kind !== "QUOTE") return;
+    const quoted = popup.route.pricing;
+    setBusy(true);
+    try {
+      const response=await fetch("/api/realtime-window",{cache:"no-store"});
+      if(!response.ok) {setPopup({kind:"UNAVAILABLE"});return;}
+      const gate=await response.json();
+      if(!gate.realtimeOpen) {setMode("BOOKING");setPopup({kind:"CLOSED"});return;}
+      const age = Date.now()-Date.parse(quoted.requestAt);
+      if(age<0 || age>90_000 || gate.baseFeeBaht !== quoted.baseFeeBaht) {
+        setPopup(null);
+        setBusy(false);
+        await showRealtimePopup();
+        return;
+      }
+    } catch {setPopup({kind:"UNAVAILABLE"});return;}
+    finally {setBusy(false);}
+    setPopup(null);
+    await completeSubmission();
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === "IMMEDIATE") {
+      await showRealtimePopup();
+      return;
+    }
+    await completeSubmission();
+  }
+
+  async function completeSubmission() {
     setError("");
     setSuccess("");
 
@@ -244,7 +373,7 @@ export default function BookingPage() {
       if (requestError || !data) {
         if (requestError?.message.includes("NO_TECHNICIAN_AVAILABLE_SELECT_BOOKING") || requestError?.message.includes("OUTSIDE_IMMEDIATE_SERVICE_HOURS")) {
           setMode("BOOKING");
-          throw new Error("ขณะนี้เรียกช่างทันทีไม่ได้ กรุณาเลือกวันและเวลา Booking ล่วงหน้า");
+          throw new Error("ขณะนี้เรียกช่างเรียลไทม์ไม่ได้ กรุณาเลือกนัดหมายล่วงหน้า");
         }
         throw new Error("เรียกช่างหรือนัดหมายไม่สำเร็จ กรุณาตรวจสอบที่อยู่และลองใหม่");
       }
@@ -271,7 +400,8 @@ export default function BookingPage() {
     <section>
       <span className="section-kicker">DAY NERAMIT · SERVICE REQUEST</span>
       <h1>เรียกช่าง / นัดหมายช่าง</h1>
-      <p className="muted">เรียกทันทีในช่วง 10:00–02:00 น. เมื่อช่างพร้อม · จองวันและเวลาอื่นได้ตลอด 24 ชั่วโมง</p>
+      <p className="muted">เรียกช่างแบบเรียลไทม์ 10:00–01:59 น. ตามเวลาไทย · 02:00–09:59 น. เลือกนัดหมาย (Booking) ได้ตลอด</p>
+      {realtimeOpen === false && <p className="notice" role="status">ขณะนี้ปิดรับเรียกช่างเรียลไทม์ กรุณาเลือกนัดหมายล่วงหน้าแทน</p>}
       <div className="request-modes" role="group" aria-label="เลือกประเภทคำขอ">
         <button type="button" className={mode === "IMMEDIATE" ? "active" : ""} onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่างทันที</button>
         <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า</button>
@@ -349,17 +479,12 @@ export default function BookingPage() {
           {geoMessage && <p className="notice" role="status">{geoMessage}</p>}
           {distance && <div className="notice" role="status">
             <strong>สำนักงาน → บ้านลูกค้า</strong>
-            <p>ระยะทางขับรถ: {(distance.distanceMeters / 1000).toFixed(2)} กม. · ใช้เวลาเดินทางประมาณ {distance.durationMinutes} นาที (ประเมินจากสภาพการจราจร)</p>
+            <p>ระยะทางขับรถ: {(distance.distanceMeters/1000).toFixed(2)} กม. · เวลาเดินทางประมาณ {distance.durationMinutes} นาที</p>
             <p>หากออกจากสำนักงานตอน {new Date(distance.departureAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.
-              คาดว่าจะถึงประมาณ {new Date(distance.estimatedArrivalAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.</p>
-            <p>{distance.estimateStatus === "EXCESS_DISTANCE_REVIEW"
-              ? "เกิน 5 กม. ต้องให้ทีมงานตรวจสอบและตกลงค่าเดินทางก่อน"
-              : distance.estimateStatus === "CLOSED"
-                ? "ตอนนี้อยู่นอกเวลาออกเดินทางใหม่ 02:00–09:59 น. กรุณานัดหมายล่วงหน้า"
-                : distance.estimateStatus === "ESTIMATE"
-                  ? `ถ้าออกจากสำนักงานในช่วงเวลาที่ประเมิน ค่าออกตรวจเบื้องต้น ${distance.estimateFeeBaht} บาท (ยังไม่ใช่ราคาที่ยืนยัน)`
-                  : "ยังไม่สามารถยืนยันค่าบริการได้"}</p>
-            <small>ค่าบริการคิดจากเวลาที่ช่างออกเดินทางจริง ณ สำนักงาน ไม่ใช่เวลาที่ลูกค้ากดเรียกช่างหรือเวลาถึงบ้าน ระยะทางและเวลานี้เป็นการประเมิน ต้องตรวจสอบยืนยันก่อนออกเดินทาง</small>
+             คาดว่าจะถึงประมาณ {new Date(distance.estimatedArrivalAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.</p>
+            <p>ส่วนเกิน 5 กม.: {(distance.pricing.extraMeters/1000).toFixed(2)} กม. · ค่าเดินทางเพิ่ม: {baht(distance.pricing.extraFeeBaht)} ·
+              ยอดรวม: <strong>{baht(distance.pricing.totalBaht)}</strong></p>
+            <small>ราคาช่วงกลางวัน/กลางคืนยึดเวลาที่ลูกค้ากดเรียกช่างและเซิร์ฟเวอร์รับรายการ ไม่ใช่เวลาเดินทางออกจากสำนักงาน</small>
           </div>}
           {(customerCoords || values.service_address.trim().length >= 15) && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางและระยะทางบน Google Maps</button></p>}
           {!distance && <p className="muted">ยังไม่ยืนยันระยะทางตามถนนและค่าบริการ เจ้าหน้าที่จะตรวจสอบก่อนนัดหมายหรือออกเดินทาง</p>}
@@ -387,6 +512,33 @@ export default function BookingPage() {
         {success && <div className="ok" role="status">ส่งเรื่องถึงทีมช่างแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูการเรียกช่างและนัดหมายของฉัน →</Link></p></div>}
       </form>
       <ServiceTerms />
+      {popup && <div role="presentation" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.78)",zIndex:1000,display:"grid",placeItems:"center",padding:16}}>
+        <section role="dialog" aria-modal="true" aria-labelledby="realtime-confirm-title"
+          style={{background:"#161616",color:"#fff",border:"1px solid #d7b56d",borderRadius:16,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto",padding:24,boxShadow:"0 25px 65px #000c"}}>
+          <h2 id="realtime-confirm-title">{popup.kind === "CLOSED" ? "ขณะนี้ปิดรับเรียกช่างทันที" : "ตรวจสอบค่าบริการเรียกช่าง"}</h2>
+          {popup.kind==="CLOSED" ? <p>ช่วง 02:00–09:59 น. ไม่เปิดรับเรียกช่างแบบเรียลไทม์ กรุณาเลือกวันและเวลานัดหมายแทน โดยนัดหมายล่วงหน้าได้ตลอด 24 ชั่วโมง</p>
+          : popup.kind==="UNAVAILABLE" ? <p>ยังตรวจสอบเส้นทางและค่าบริการอัตโนมัติไม่ได้ จึงไม่สามารถยืนยันยอดเรียกช่างได้ตอนนี้ กรุณาเลือกนัดหมายล่วงหน้าเพื่อให้ทีมงานตรวจสอบ</p>
+          : <>
+            <p>คำนวณจากสำนักงานไปบ้านลูกค้า ตามเส้นทางขับรถจริง</p>
+            <dl style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"8px 16px",margin:"16px 0"}}>
+              <dt>ระยะทางรวม</dt><dd>{(popup.route.distanceMeters/1000).toFixed(2)} กม.</dd>
+              <dt>ระยะเกิน 5 กม.</dt><dd>{(popup.route.pricing.extraMeters/1000).toFixed(2)} กม.</dd>
+              <dt>ค่าออกตรวจตามเวลากดเรียก</dt><dd>{baht(popup.route.pricing.baseFeeBaht)}</dd>
+              <dt>ค่าเดินทางส่วนเพิ่ม</dt><dd>{baht(popup.route.pricing.extraFeeBaht)}</dd>
+              <dt><strong>ยอดรวม</strong></dt><dd><strong>{baht(popup.route.pricing.totalBaht)}</strong></dd>
+            </dl>
+            <p>เวลาขับรถประมาณ {popup.route.durationMinutes} นาที · เวลาเรียกที่ประเมิน {new Date(popup.route.pricing.requestAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",second:"2-digit"})} น.</p>
+            {popup.kind==="RATE_PENDING" && <p role="alert">ระยะทางเกิน 5 กม. แต่ยังไม่ได้อนุมัติอัตราคิดเงินต่อกิโลเมตรหรือการปัดเศษ จึงไม่สามารถแสดงยอดรวมที่ถูกต้องได้ กรุณานัดหมายให้ทีมงานตรวจสอบ</p>}
+            <p style={{fontSize:13,opacity:.85}}>ราคานี้เป็นยอดประมาณการที่ลูกค้าต้องตรวจสอบก่อนยืนยัน ไม่ใช่ยืนยันว่ามีช่างออกเดินทางหรือมีการเรียกเก็บเงินแล้ว</p>
+          </>}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:20}}>
+            {popup.kind==="QUOTE" && <button type="button" autoFocus className="btn btn-gold" disabled={busy}
+              onClick={()=>void confirmRealtimePopup()}>{busy?"กำลังตรวจสอบ…":"ยืนยันเรียกช่างตามยอดที่แสดง"}</button>}
+            <button type="button" className="btn btn-outline" onClick={()=>{setPopup(null);setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า (Booking)</button>
+            <button type="button" className="btn btn-outline" onClick={()=>setPopup(null)}>ปิด</button>
+          </div>
+        </section>
+      </div>}
     </section>
   );
 }
