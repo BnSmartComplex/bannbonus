@@ -8,12 +8,13 @@ describe("office to customer driving route", () => {
   it.each(["", "soon", "NaNs", "-3s", "123456789s", "1.2222222222s", null, 7])("rejects invalid provider duration", value => {
     expect(parseRouteDurationSeconds(value)).toBeNull();
   });
-  it("calculates ETA from office departure and does not use arrival time for day/night pricing", () => {
+  it("calculates ETA from office departure independent of click-based price", () => {
     const result=previewOfficeDeparture(new Date("2026-10-18T20:59:59+07:00"),5000,181);
     expect(result.estimatedArrivalAt).toBe("2026-10-18T14:03:00.000Z");
   });
-  it("night rate applies at 21:00 departure, even if the customer books the prior afternoon", () => {
+  it("keeps providing travel ETA across the nighttime boundary", () => {
     const result=previewOfficeDeparture(new Date("2026-10-18T21:00:00+07:00"),5000,1200);
+    expect(result.estimatedArrivalAt).toBe("2026-10-18T14:20:00.000Z");
   });
   it("travel ETA remains available at 02:00 without pretending immediate dispatch is open", () => {
     const trip=previewOfficeDeparture(new Date("2026-10-19T02:00:00+07:00"),5000,60);
