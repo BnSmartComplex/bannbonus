@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { validateSchedule, type ScheduleDraft } from "@/lib/schedule";
+import { LiveAvailability } from "@/components/live-availability";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { booking } from "@/lib/validation";
@@ -32,6 +34,18 @@ type FormValues = {
 
 export default function BookingPage() {
   const configured = Boolean(getSupabase());
+  const [mode, setMode] = useState<"IMMEDIATE"|"BOOKING">("BOOKING");
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft>({date:"",startTime:"",endTime:""});
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    setMode(query.get("mode") === "IMMEDIATE" ? "IMMEDIATE" : "BOOKING");
+    const category = query.get("category");
+    const area = query.get("area");
+    setValues(current => ({...current,
+      category: category && categories.some(([key]) => key === category) ? category : current.category,
+      area: area === "BANGKOK" || area === "NONTHABURI" ? area : current.area,
+    }));
+  }, []);
   const [values, setValues] = useState<FormValues>({
     category: "OTHER",
     fault_description: "",
@@ -72,6 +86,11 @@ export default function BookingPage() {
 
     const paths: string[] = [];
     let submitted = false;
+    const validatedTime = mode === "BOOKING" ? validateSchedule(scheduleDraft) : null;
+    if (validatedTime && !validatedTime.ok) { setError(validatedTime.message); return; }
+    if (mode === "BOOKING" && !(/^(1\d|2[01]):/.test(scheduleDraft.startTime) || /^(00|01):/.test(scheduleDraft.startTime))) {
+      setError("เวลานัดหมายต้องอยู่ระหว่าง 10:00–01:59 น.");return;
+    }
     setBusy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -89,6 +108,8 @@ export default function BookingPage() {
         throw new Error(draft.error.issues.map((issue) => issue.message).join("; "));
       }
 
+      const { error: enrollmentError } = await supabase.rpc("join_operating_tenant_as_customer");
+      if (enrollmentError) throw new Error("ยังไม่สามารถลงทะเบียนลูกค้าในระบบได้ กรุณาติดต่อทีมงาน");
       for (const file of files) {
         const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
         const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
@@ -109,7 +130,7 @@ export default function BookingPage() {
         ?? crypto.randomUUID();
       idempotencyKey.current = requestKey;
       window.sessionStorage.setItem(idempotencyStorageKey, requestKey);
-      const { data, error: requestError } = await supabase.rpc("create_booking_request", {
+      const { data, error: requestError } = await supabase.rpc("create_service_request", {
         p_category: parsed.data.category,
         p_fault_description: parsed.data.fault_description,
         p_brand: parsed.data.brand,
@@ -120,8 +141,15 @@ export default function BookingPage() {
         p_photo_paths: parsed.data.photo_paths,
         p_consent: true,
         p_idempotency_key: requestKey,
+        p_mode: mode,
+        p_desired_start: validatedTime?.ok ? validatedTime.startIso : null,
+        p_desired_end: validatedTime?.ok ? validatedTime.endIso : null,
       });
       if (requestError || !data) {
+        if (requestError?.message.includes("NO_TECHNICIAN_AVAILABLE_SELECT_BOOKING") || requestError?.message.includes("OUTSIDE_IMMEDIATE_SERVICE_HOURS")) {
+          setMode("BOOKING");
+          throw new Error("ขณะนี้เรียกช่างทันทีไม่ได้ กรุณาเลือกวันและเวลา Booking ล่วงหน้า");
+        }
         throw new Error("บันทึกคำขอไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่");
       }
       submitted = true;
@@ -145,9 +173,15 @@ export default function BookingPage() {
 
   return (
     <section>
-      <h1>ส่งคำขอ Booking ล่วงหน้าฟรี</h1>
-      <p>การส่งคำขอนี้ยังไม่ใช่การเรียกช่างออกเดินทาง และไม่มีการเรียกเก็บเงิน</p>
-      <ServiceTerms />
+      <span className="section-kicker">DAY NERAMIT · SERVICE REQUEST</span>
+      <h1>เรียกช่างทันที / Booking ล่วงหน้า</h1>
+      <p className="muted">เรียกทันทีในช่วง 10:00–02:00 น. เมื่อช่างพร้อม · จองวันและเวลาอื่นได้ตลอด 24 ชั่วโมง</p>
+      <div className="request-modes" role="group" aria-label="เลือกประเภทคำขอ">
+        <button type="button" className={mode === "IMMEDIATE" ? "active" : ""} onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่างทันที</button>
+        <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>Booking ล่วงหน้า 24 ชั่วโมง</button>
+      </div>
+      <LiveAvailability compact category={values.category} area={values.area} onAreaChange={area=>update("area",area)} onCategoryChange={category=>update("category",category)}/>
+      <p className="notice">การส่งคำขอยังไม่ใช่การยืนยันมีช่างออกเดินทาง ทีมงานต้องตรวจสอบและช่างต้องรับงานก่อน</p>
       {!configured && <p className="notice" role="status">ระบบรับคำขออยู่ระหว่างเตรียมเปิดให้บริการ ยังส่งคำขอไม่ได้ในขณะนี้</p>}
       <p className="notice">
         ต้องเข้าสู่ระบบก่อน · <Link href="/login">เข้าสู่ระบบ</Link> ·
@@ -155,7 +189,13 @@ export default function BookingPage() {
       </p>
       <form className="card" onSubmit={submit}>
         <fieldset disabled={busy || !configured || Boolean(success)}>
-          <legend>ข้อมูลคำขอ</legend>
+          <legend>{mode === "IMMEDIATE" ? "ข้อมูลเรียกช่างตอนนี้" : "ข้อมูล Booking ล่วงหน้า"}</legend>
+          {mode === "BOOKING" && <div className="schedule-grid">
+            <div className="field"><label htmlFor="booking-date">วันที่ต้องการ *</label><input id="booking-date" type="date" required value={scheduleDraft.date} onChange={e=>{setScheduleDraft(v=>({...v,date:e.target.value}));resetIdempotencyKey();}}/></div>
+            <div className="field"><label htmlFor="booking-start">เวลาเริ่ม *</label><input id="booking-start" type="time" required value={scheduleDraft.startTime} onChange={e=>{setScheduleDraft(v=>({...v,startTime:e.target.value}));resetIdempotencyKey();}}/></div>
+            <div className="field"><label htmlFor="booking-end">เวลาสิ้นสุดประมาณการ *</label><input id="booking-end" type="time" required value={scheduleDraft.endTime} onChange={e=>{setScheduleDraft(v=>({...v,endTime:e.target.value}));resetIdempotencyKey();}}/></div>
+            <small>เลือกเวลาเริ่ม 10:00–01:59 น. ระบบรองรับงานที่สิ้นสุดวันถัดไป</small>
+          </div>}
         <div className="field">
           <label htmlFor="category">หมวดอุปกรณ์</label>
           <select id="category" value={values.category} onChange={(event) => update("category", event.target.value)}>
@@ -201,8 +241,9 @@ export default function BookingPage() {
         <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : "ส่งคำขอ"}</button></p>
         </fieldset>
         {error && <div className="error" role="alert">{error}</div>}
-        {success && <div className="ok" role="status">ส่งคำขอแล้ว: {success}<p>สถานะ: PENDING_TEAM_REVIEW — ยังไม่ใช่การยืนยันนัดหมาย</p></div>}
+        {success && <div className="ok" role="status">รับคำขอแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูรายการจองของฉัน →</Link></p></div>}
       </form>
+      <ServiceTerms />
     </section>
   );
 }
