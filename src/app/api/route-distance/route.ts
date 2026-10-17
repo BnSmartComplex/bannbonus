@@ -25,8 +25,8 @@ function json(body: object, status: number) {
 /**
  * Office -> customer driving route preview, authenticated and server-only.
  * Google Routes key must be provisioned with project-level usage limits.
- * This previews leaving the office NOW; it does not record actual departure
- * or authorize dispatch/payment. Re-evaluate for the actual office departure.
+ * Travel time assumes departure from office NOW; quote pricing is handled
+ * separately using server-received realtime request time. No billing writes.
  */
 export async function POST(request: NextRequest) {
   const raw = await request.json().catch(() => null);
@@ -90,10 +90,7 @@ export async function POST(request: NextRequest) {
       calculatedAt: departureNow.toISOString(),
       departureAt: preview.departureAt,
       estimatedArrivalAt: preview.estimatedArrivalAt,
-      departureWindow: preview.departureWindow,
-      estimateStatus: preview.estimateStatus,
-      estimateFeeBaht: preview.estimateFeeBaht,
-      notice: "คำนวณจากสำนักงานไปหาลูกค้า หากช่างออกเดินทางภายในตอนนี้เท่านั้น เวลาจริงและราคาอาจเปลี่ยน ต้องให้ทีมงานยืนยันก่อนออกเดินทาง",
+      notice: "ระยะทางและเวลาขับรถจากสำนักงานถึงลูกค้าเป็นการประมาณการ ราคาเรียลไทม์ยึดเวลาที่ระบบรับการกดเรียกช่าง และต้องยืนยันค่าเดินทางก่อนออกช่าง",
     }, 200);
   } catch {
     return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" }, 503);
