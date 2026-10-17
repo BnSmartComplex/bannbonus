@@ -128,6 +128,8 @@ export default function BookingPage() {
       setGeoMessage("กรุณากรอกที่อยู่ลูกค้าให้ครบก่อนคำนวณระยะทาง");
       return;
     }
+    setCustomerCoords(null);
+    setLocationConfirmed(false);
     void requestRoute({ address: values.service_address.trim(), district: values.district });
   }
 
@@ -145,7 +147,7 @@ export default function BookingPage() {
       setCustomerCoords(point);
       resetIdempotencyKey();
       setGeoMessage("ได้รับพิกัดจากอุปกรณ์แล้ว โปรดยืนยันว่าตำแหน่งนี้ตรงกับบ้านที่ต้องการให้ช่างไป");
-      void requestRoute(point);
+      setCheckingDistance(false);
     }, () => {
       setCustomerCoords(null);
       setGeoMessage("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณากรอกที่อยู่ให้ครบเพื่อให้เจ้าหน้าที่ตรวจสอบ");
@@ -332,7 +334,12 @@ export default function BookingPage() {
             {checkingDistance ? "กำลังตรวจระยะทาง…" : "ใช้ตำแหน่งปัจจุบันของฉัน"}
           </button>
           {customerCoords && <label style={{display:"block",marginTop:12}}>
-            <input type="checkbox" checked={locationConfirmed} onChange={event=>{setLocationConfirmed(event.target.checked);resetIdempotencyKey();}}/>
+            <input type="checkbox" checked={locationConfirmed} onChange={event=>{
+              setLocationConfirmed(event.target.checked);
+              setDistance(null);
+              resetIdempotencyKey();
+              if(event.target.checked && customerCoords) void requestRoute(customerCoords);
+            }}/>
             {" "}ยืนยันว่าพิกัดนี้คือสถานที่ที่จะให้ช่างไป
           </label>}
           <p><button className="btn btn-outline" type="button" disabled={checkingDistance || values.service_address.trim().length < 15}
