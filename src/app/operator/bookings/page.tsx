@@ -1,158 +1,113 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { Clock3, CalendarCheck2, Send, RefreshCw } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { validateSchedule, type ScheduleDraft } from "@/lib/schedule";
 
-type Booking = {
-  id: string;
-  tenant_id: string;
-  category: string;
-  area: string;
-  status: string;
-  created_at: string;
+type Booking={
+ id:string;tenant_id:string;category:string;area:string;status:string;created_at:string;
+ request_mode:"IMMEDIATE"|"BOOKING";desired_start:string|null;desired_end:string|null;
+ alternative_start:string|null;alternative_end:string|null;alternative_technician_id:string|null;
+ alternative_status:"NONE"|"PENDING_CUSTOMER"|"CUSTOMER_ACCEPTED"|"CUSTOMER_REJECTED";
 };
-type Technician = { user_id: string };
-
-const emptyDraft: ScheduleDraft = { date: "", startTime: "", endTime: "" };
-
-export default function OperatorBookingsPage() {
-  const supabase = getSupabase();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [techniciansByTenant, setTechniciansByTenant] = useState<Record<string, Technician[]>>({});
-  const [selectedTechnician, setSelectedTechnician] = useState<Record<string, string>>({});
-  const [drafts, setDrafts] = useState<Record<string, ScheduleDraft>>({});
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (!supabase) return;
-    void (async () => {
-      const { data, error } = await supabase
-        .from("booking_requests")
-        .select("id,tenant_id,category,area,status,created_at")
-        .eq("status", "PENDING_TEAM_REVIEW")
-        .order("created_at");
-      if (error) {
-        setMessage("โหลดคำขอไม่สำเร็จ");
-        return;
-      }
-
-      const tenantIds = [...new Set((data ?? []).map((booking) => booking.tenant_id))];
-      const directoryResults = await Promise.all(
-        tenantIds.map(async (tenantId) => {
-          const result = await supabase.rpc("list_tenant_technicians", { p_tenant_id: tenantId });
-          return [tenantId, result] as const;
-        }),
-      );
-      const directory: Record<string, Technician[]> = {};
-      for (const [tenantId, result] of directoryResults) {
-        if (result.error) {
-          setMessage(result.error.message);
-          return;
-        }
-        directory[tenantId] = (result.data ?? []) as Technician[];
-      }
-      setBookings((data ?? []) as Booking[]);
-      setTechniciansByTenant(directory);
-    })();
-  }, [supabase]);
-
-  function updateDraft(bookingId: string, key: keyof ScheduleDraft, value: string) {
-    setDrafts((current) => ({
-      ...current,
-      [bookingId]: { ...(current[bookingId] ?? emptyDraft), [key]: value },
-    }));
+type Technician={user_id:string};
+function bangkok(iso:string):{date:string;time:string}{
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date(iso));
+ const part=(k:string)=>parts.find(p=>p.type===k)?.value??"";
+ return {date:`${part("year")}-${part("month")}-${part("day")}`,time:`${part("hour")}:${part("minute")}`};
+}
+function initialDraft(item:Booking):ScheduleDraft{
+ const start=item.alternative_status==="CUSTOMER_ACCEPTED"?item.alternative_start:item.desired_start;
+ const end=item.alternative_status==="CUSTOMER_ACCEPTED"?item.alternative_end:item.desired_end;
+ return {date:start?bangkok(start).date:"",startTime:start?bangkok(start).time:"",endTime:end?bangkok(end).time:""};
+}
+const label=(s:string)=>s==="PENDING_CUSTOMER"?"รอลูกค้าตอบรับ":s==="CUSTOMER_ACCEPTED"?"ลูกค้ายอมรับแล้ว":s==="CUSTOMER_REJECTED"?"ลูกค้าปฏิเสธ":"ยังไม่มีข้อเสนอใหม่";
+export default function OperatorBookingsPage(){
+ const supabase=getSupabase();
+ const [bookings,setBookings]=useState<Booking[]>([]);
+ const [techniciansByTenant,setDirectory]=useState<Record<string,Technician[]>>({});
+ const [selected,setSelected]=useState<Record<string,string>>({});
+ const [drafts,setDrafts]=useState<Record<string,ScheduleDraft>>({});
+ const [message,setMessage]=useState("");
+ const [busy,setBusy]=useState<string|null>(null);
+ const load=useCallback(async()=>{
+  if(!supabase){setMessage("ยังไม่ได้เชื่อมต่อฐานข้อมูล");return;}
+  const {data:{user}}=await supabase.auth.getUser();
+  if(!user){setMessage("ต้องเข้าสู่ระบบเจ้าหน้าที่ก่อน");return;}
+  const {data,error}=await supabase.from("booking_requests")
+   .select("id,tenant_id,category,area,status,created_at,request_mode,desired_start,desired_end,alternative_start,alternative_end,alternative_technician_id,alternative_status")
+   .eq("status","PENDING_TEAM_REVIEW").order("created_at",{ascending:true});
+  if(error){setMessage("โหลดรายการคำขอไม่สำเร็จหรือไม่มีสิทธิ์: "+error.message);return;}
+  const rows=(data??[]) as Booking[];
+  const ids=[...new Set(rows.map(x=>x.tenant_id))];
+  const results=await Promise.all(ids.map(async id=>[id,await supabase.rpc("list_tenant_technicians",{p_tenant_id:id})] as const));
+  const directory:Record<string,Technician[]>={};
+  for(const [id,res] of results){if(res.error){setMessage(res.error.message);return;}directory[id]=(res.data??[]) as Technician[];}
+  setDirectory(directory);setBookings(rows);if(!rows.length)setMessage("ขณะนี้ไม่มีคำขอรออนุมัติ");
+ },[supabase]);
+ useEffect(()=>{void load();const timer=window.setInterval(()=>void load(),20000);return()=>window.clearInterval(timer);},[load]);
+ function updateDraft(id:string,key:keyof ScheduleDraft,value:string,base:ScheduleDraft){
+  setDrafts(v=>({...v,[id]:{...(v[id]??base),[key]:value}}));
+ }
+ async function execute(item:Booking,action:"APPROVE"|"PROPOSE"){
+  if(!supabase)return;
+  const tech=selected[item.id]??(item.alternative_status==="CUSTOMER_ACCEPTED"?item.alternative_technician_id:"");
+  if(!tech){setMessage("กรุณาเลือกช่างที่จะรับงาน");return;}
+  let range:{startIso:string;endIso:string};
+  if(item.request_mode==="IMMEDIATE"){
+   const start=new Date(Date.now()+10*60_000);
+   const end=new Date(start.getTime()+60*60_000);
+   range={startIso:start.toISOString(),endIso:end.toISOString()};
+  }else{
+   const schedule=validateSchedule(drafts[item.id]??initialDraft(item));
+   if(!schedule.ok){setMessage(schedule.message);return;}
+   range=schedule;
   }
-
-  async function approve(booking: Booking) {
-    if (!supabase) return;
-    const technicianId = selectedTechnician[booking.id];
-    const draft = drafts[booking.id] ?? emptyDraft;
-    if (!technicianId) {
-      setMessage("กรุณาเลือกช่าง");
-      return;
-    }
-    const schedule = validateSchedule(draft);
-    if (!schedule.ok) {
-      setMessage(schedule.message);
-      return;
-    }
-
-    setMessage("กำลังตรวจสอบสิทธิ์และเวลาว่างจาก backend…");
-    const { error } = await supabase.rpc("approve_booking_and_assign_technician", {
-      p_booking_id: booking.id,
-      p_technician_id: technicianId,
-      p_scheduled_start: schedule.startIso,
-      p_scheduled_end: schedule.endIso,
-    });
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-    setMessage("อนุมัติและมอบหมายงานสำเร็จ");
-    setBookings((current) => current.filter((item) => item.id !== booking.id));
-  }
-
-  return (
-    <section>
-      <h1>Operator · Booking Approval</h1>
-      <p role="status">{message}</p>
-      {bookings.map((booking) => {
-        const draft = drafts[booking.id] ?? emptyDraft;
-        const technicians = techniciansByTenant[booking.tenant_id] ?? [];
-        const technicianId = "technician-" + booking.id;
-        const dateId = "date-" + booking.id;
-        const startId = "start-" + booking.id;
-        const endId = "end-" + booking.id;
-        return (
-          <article className="card" key={booking.id}>
-            <strong>{booking.category}</strong> · {booking.area} · {booking.status}
-            <p>{booking.id}</p>
-            <form onSubmit={(event) => { event.preventDefault(); void approve(booking); }}>
-              <label htmlFor={technicianId}>ช่างใน tenant นี้</label>
-              <select
-                id={technicianId}
-                required
-                value={selectedTechnician[booking.id] ?? ""}
-                onChange={(event) => setSelectedTechnician((current) => ({
-                  ...current, [booking.id]: event.target.value,
-                }))}
-              >
-                <option value="">เลือกช่าง</option>
-                {technicians.map((technician) => (
-                  <option key={technician.user_id} value={technician.user_id}>{technician.user_id}</option>
-                ))}
-              </select>
-              <label htmlFor={dateId}>วันที่นัดหมาย (Asia/Bangkok)</label>
-              <input
-                id={dateId}
-                type="date"
-                required
-                value={draft.date}
-                onChange={(event) => updateDraft(booking.id, "date", event.target.value)}
-              />
-              <label htmlFor={startId}>เวลาเริ่ม (Asia/Bangkok, UTC+07:00)</label>
-              <input
-                id={startId}
-                type="time"
-                required
-                value={draft.startTime}
-                onChange={(event) => updateDraft(booking.id, "startTime", event.target.value)}
-              />
-              <label htmlFor={endId}>เวลาสิ้นสุด (Asia/Bangkok, UTC+07:00)</label>
-              <input
-                id={endId}
-                type="time"
-                required
-                value={draft.endTime}
-                onChange={(event) => updateDraft(booking.id, "endTime", event.target.value)}
-              />
-              <small>ระบบจะส่งเวลาเป็น UTC ให้ backend หลังตรวจสอบวันเวลาตาม Asia/Bangkok</small>
-              <p><button className="btn" type="submit">อนุมัติและมอบหมาย</button></p>
-            </form>
-          </article>
-        );
-      })}
-    </section>
-  );
+  setBusy(item.id);setMessage("กำลังตรวจสอบสถานะและบันทึกผ่านฐานข้อมูล…");
+  const call=action==="PROPOSE"?"propose_booking_alternative":
+    item.request_mode==="IMMEDIATE"?"dispatch_and_assign_technician":"approve_booking_and_assign_technician";
+  const params=action==="PROPOSE"
+    ?{p_booking_id:item.id,p_technician_id:tech,p_start:range.startIso,p_end:range.endIso}
+    :{p_booking_id:item.id,p_technician_id:tech,p_scheduled_start:range.startIso,p_scheduled_end:range.endIso};
+  const {error}=await supabase.rpc(call,params);
+  setBusy(null);
+  if(error){setMessage("ดำเนินการไม่สำเร็จ: "+error.message);return;}
+  setMessage(action==="PROPOSE"?"เสนอเวลาใหม่แล้ว รอลูกค้ากดยอมรับจากรายการ Booking":"ยืนยันงานและมอบหมายช่างสำเร็จ");
+  await load();
+ }
+ return <section className="operator-board">
+  <span className="section-kicker">DAY NERAMIT · OPERATIONS</span><h1>ศูนย์รับงานและจัดการ Booking</h1>
+  <p className="muted">รายการเรียกทันทีและ Booking ล่วงหน้าอยู่ในหน้าจอเดียว · ตรวจคิวและอนุมัติจาก Backend</p>
+  <div className="dashboard-actions"><button className="btn btn-outline" type="button" onClick={()=>void load()}><RefreshCw size={17}/> อัปเดตคำขอ</button><Link className="btn btn-outline" href="/technician/jobs">หน้าช่าง →</Link></div>
+  <p className="notice" role="status">{message}</p>
+  {bookings.map(item=>{
+   const draft=drafts[item.id]??initialDraft(item);
+   const technicians=techniciansByTenant[item.tenant_id]??[];
+   const customerAccepted=item.alternative_status==="CUSTOMER_ACCEPTED";
+   const pending=item.alternative_status==="PENDING_CUSTOMER";
+   const rejected=item.alternative_status==="CUSTOMER_REJECTED";
+   const tech=selected[item.id]??(customerAccepted?item.alternative_technician_id??"":"");
+   const mayApprove=item.request_mode==="IMMEDIATE"||customerAccepted||item.alternative_status==="NONE";
+   return <article className="card booking-card" key={item.id}>
+    <div className="booking-head"><div><span className="section-kicker">{item.request_mode==="IMMEDIATE"?"เรียกช่างทันที":"Booking ล่วงหน้า"}</span><h2>{item.category} · {item.area==="NONTHABURI"?"นนทบุรี":"กรุงเทพฯ"}</h2></div><span className="booking-state">{label(item.alternative_status)}</span></div>
+    <small className="muted">เลขคำขอ {item.id}</small>
+    {item.request_mode==="BOOKING"&&<p><Clock3 size={17}/> เวลาที่ลูกค้าเลือก: {item.desired_start?new Date(item.desired_start).toLocaleString("th-TH",{timeZone:"Asia/Bangkok"}):"ไม่ระบุ"}</p>}
+    {item.alternative_start&&<p className="notice">เวลาใหม่ที่เสนอ: {new Date(item.alternative_start).toLocaleString("th-TH",{timeZone:"Asia/Bangkok"})} · {label(item.alternative_status)}</p>}
+    <div className="operator-fields">
+     <div className="field"><label htmlFor={`tech-${item.id}`}>ช่างผู้รับงาน</label><select id={`tech-${item.id}`} value={tech} onChange={e=>setSelected(v=>({...v,[item.id]:e.target.value}))}><option value="">เลือกช่าง</option>{technicians.map(t=><option key={t.user_id} value={t.user_id}>{t.user_id.slice(0,8)}…</option>)}</select></div>
+     {item.request_mode==="BOOKING"&&<>
+      <div className="field"><label htmlFor={`date-${item.id}`}>วันที่</label><input id={`date-${item.id}`} type="date" value={draft.date} onChange={e=>updateDraft(item.id,"date",e.target.value,draft)}/></div>
+      <div className="field"><label htmlFor={`from-${item.id}`}>เวลาเริ่ม</label><input id={`from-${item.id}`} type="time" value={draft.startTime} onChange={e=>updateDraft(item.id,"startTime",e.target.value,draft)}/></div>
+      <div className="field"><label htmlFor={`to-${item.id}`}>เวลาสิ้นสุด</label><input id={`to-${item.id}`} type="time" value={draft.endTime} onChange={e=>updateDraft(item.id,"endTime",e.target.value,draft)}/></div>
+     </>}
+    </div>
+    <div className="choice-buttons">
+     {item.request_mode==="BOOKING"&&<button className="btn btn-outline" disabled={busy===item.id} type="button" onClick={()=>void execute(item,"PROPOSE")}><Send size={17}/> เสนอวันและเวลาใหม่ให้ลูกค้า</button>}
+     <button className="btn btn-gold" disabled={busy===item.id||!mayApprove||(customerAccepted&&((tech!==item.alternative_technician_id)||(draft.date!==bangkok(item.alternative_start??"").date)||(draft.startTime!==bangkok(item.alternative_start??"").time)||(draft.endTime!==bangkok(item.alternative_end??"").time)))} type="button" onClick={()=>void execute(item,"APPROVE")}><CalendarCheck2 size={17}/> {item.request_mode==="IMMEDIATE"?"ตรวจสอบและจ่ายงาน":"ยืนยัน Booking และมอบหมาย"}</button>
+    </div>
+    {(pending||rejected)&&<p className="notice">ยืนยันนัดไม่ได้จนกว่าลูกค้าจะยอมรับข้อเสนอใหม่</p>}
+   </article>;
+  })}
+ </section>;
 }
