@@ -42,7 +42,33 @@ describe("Chang24 server click-based distance charges", () => {
     expect(()=>realtimeQuote(day,-1,10,"PRO_RATA")).toThrow("INVALID_REALTIME_QUOTE_INPUT");
     expect(()=>realtimeQuote(day,6200,-1,"PRO_RATA")).toThrow("INVALID_EXTRA_DISTANCE_RATE");
   });
-  it("never uses the formerly proposed 10 THB rate as a default", () => {
-    expect(approvedExtraDistancePolicy({})).toEqual({rate:null,rounding:null});
+  it("uses explicitly owner-approved 10 THB/km with full kilometre rounding", () => {
+    expect(approvedExtraDistancePolicy()).toEqual({rate:10,rounding:"CEIL_KILOMETRE"});
+  });
+  it.each([
+    [5000,0,299,0],
+    [5001,1,309,1],
+    [5999,1,309,999],
+    [6000,1,309,1000],
+    [6001,2,319,1001],
+    [6200,2,319,1200],
+    [7000,2,319,2000],
+    [7001,3,329,2001],
+  ])("approved daytime quote at %s meters adds %s charged km", (roadMeters,billedKm,total,excessMeters) => {
+    const {rate,rounding}=approvedExtraDistancePolicy();
+    expect(realtimeQuote(day,roadMeters,rate,rounding)).toMatchObject({
+      status:"QUOTABLE",
+      extraMeters:excessMeters,
+      billableExtraKilometres:billedKm,
+      extraFeeBaht:billedKm*10,
+      totalBaht:total,
+    });
+  });
+  it("approved nighttime total is 519 THB for 6.2 km", () => {
+    const {rate,rounding}=approvedExtraDistancePolicy();
+    expect(realtimeQuote(night,6200,rate,rounding)).toMatchObject({
+      status:"QUOTABLE",billableExtraKilometres:2,
+      baseFeeBaht:499,extraFeeBaht:20,totalBaht:519,
+    });
   });
 });
