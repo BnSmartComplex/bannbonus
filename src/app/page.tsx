@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowUpRight, Clock3, ShieldCheck, Wind, Wrench, Waves, PlugZap, Refrigerator, WashingMachine, Laptop, PhoneCall, CalendarClock, ArrowRight } from "lucide-react";
 import { LiveAvailability } from "@/components/live-availability";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
+import { portalMode } from "@/lib/portal-mode";
+import { StaffPortalHome } from "@/components/staff-portal-home";
 
 const servicePhotos: Record<string,string> = {
  AIR_CONDITIONER:"aircon-repair-800.webp",
@@ -23,6 +25,7 @@ const services = [
 ];
 
 export default function HomePage() {
+  if (portalMode() === "STAFF") return <StaffPortalHome />;
   return (
     <>
       <section className="gold-hero" aria-labelledby="hero-title">
