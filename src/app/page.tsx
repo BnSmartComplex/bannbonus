@@ -28,7 +28,7 @@ export default function HomePage() {
         <div className="hero-copy">
           <div className="eyebrow"><span className="gold-dot" /> บริการช่างนนทบุรี · กรุงเทพฯ</div>
           <div className="hero-logo" aria-label="Day Neramit">
-            <img src="https://chang.bannbonus.chatgpt.site/logo.svg" width="116" height="106" alt="โลโก้ Day Neramit" />
+            <img src="https://d2ol7oe51mr4n9.cloudfront.net/user_3Jbrjw1A1wOVLHTuEgAgHqYVg57/e7bc55fe-d06b-4d14-ae26-d75e6f59753c.jpg" width="116" height="106" alt="โลโก้ Day Neramit" />
             <div><span className="overline">DAY NERAMIT</span><h1 id="hero-title">ช่างเดย์<span>เนรมิต</span></h1><div className="hero-mini">SMART REPAIR &amp; RENOVATION</div></div>
           </div>
           <h2>เรื่องบ้านให้เราดูแล <em>เรียกช่างได้ทันที</em> เมื่อทีมพร้อม</h2>
@@ -36,7 +36,7 @@ export default function HomePage() {
           <div className="hero-actions"><Link className="btn btn-gold" href="/booking?mode=IMMEDIATE">เรียกช่างตอนนี้ <ArrowUpRight size={19} /></Link><Link className="btn btn-outline" href="/booking?mode=BOOKING">นัดวันอื่น <CalendarClock size={19}/></Link></div>
           <div className="hero-quick"><span><Clock3 size={17}/> รับเรียกช่าง 10:00–02:00 น.</span><span><ShieldCheck size={17}/> นัดหมายยืนยันโดยทีมงาน</span></div>
         </div>
-        <div className="hero-aside"><div className="hero-art"><div className="hero-circuit" /><img src="https://chang.bannbonus.chatgpt.site/logo.svg" alt="" aria-hidden="true" width="300" height="272" /><p>ช่างเดย์เนรมิต</p><small>บริการครบ จบในที่เดียว</small></div><LiveAvailability /></div>
+        <div className="hero-aside"><div className="hero-art"><div className="hero-circuit" /><img src="https://d2ol7oe51mr4n9.cloudfront.net/user_3Jbrjw1A1wOVLHTuEgAgHqYVg57/e7bc55fe-d06b-4d14-ae26-d75e6f59753c.jpg" alt="" aria-hidden="true" width="300" height="272" /><p>ช่างเดย์เนรมิต</p><small>บริการครบ จบในที่เดียว</small></div><LiveAvailability /></div>
       </section>
       <section className="section-block" id="services">
         <div className="section-heading"><div><span className="section-kicker">OUR SERVICES</span><h2>บริการช่างครบวงจร</h2><p>เลือกประเภทงาน แจ้งอาการ และติดตามการรับงานได้ในระบบเดียว</p></div><Link href="/booking" className="section-link">ส่งคำขอ <ArrowRight size={17}/></Link></div>
