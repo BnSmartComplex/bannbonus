@@ -518,7 +518,7 @@ export default function BookingPage() {
           <h2 id="realtime-confirm-title">{popup.kind === "CLOSED" ? "ขณะนี้ปิดรับเรียกช่างทันที" : "ตรวจสอบค่าบริการเรียกช่าง"}</h2>
           {popup.kind==="CLOSED" ? <p>ช่วง 02:00–09:59 น. ไม่เปิดรับเรียกช่างแบบเรียลไทม์ กรุณาเลือกวันและเวลานัดหมายแทน โดยนัดหมายล่วงหน้าได้ตลอด 24 ชั่วโมง</p>
           : popup.kind==="UNAVAILABLE" ? <p>ยังตรวจสอบเส้นทางและค่าบริการอัตโนมัติไม่ได้ จึงไม่สามารถยืนยันยอดเรียกช่างได้ตอนนี้ กรุณาเลือกนัดหมายล่วงหน้าเพื่อให้ทีมงานตรวจสอบ</p>
-          : <>
+          : "route" in popup ? <>
             <p>คำนวณจากสำนักงานไปบ้านลูกค้า ตามเส้นทางขับรถจริง</p>
             <dl style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"8px 16px",margin:"16px 0"}}>
               <dt>ระยะทางรวม</dt><dd>{(popup.route.distanceMeters/1000).toFixed(2)} กม.</dd>
@@ -530,7 +530,7 @@ export default function BookingPage() {
             <p>เวลาขับรถประมาณ {popup.route.durationMinutes} นาที · เวลาเรียกที่ประเมิน {new Date(popup.route.pricing.requestAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",second:"2-digit"})} น.</p>
             {popup.kind==="RATE_PENDING" && <p role="alert">ระยะทางเกิน 5 กม. แต่ยังไม่ได้อนุมัติอัตราคิดเงินต่อกิโลเมตรหรือการปัดเศษ จึงไม่สามารถแสดงยอดรวมที่ถูกต้องได้ กรุณานัดหมายให้ทีมงานตรวจสอบ</p>}
             <p style={{fontSize:13,opacity:.85}}>ราคานี้เป็นยอดประมาณการที่ลูกค้าต้องตรวจสอบก่อนยืนยัน ไม่ใช่ยืนยันว่ามีช่างออกเดินทางหรือมีการเรียกเก็บเงินแล้ว</p>
-          </>}
+          </> : null}
           <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:20}}>
             {popup.kind==="QUOTE" && <button type="button" autoFocus className="btn btn-gold" disabled={busy}
               onClick={()=>void confirmRealtimePopup()}>{busy?"กำลังตรวจสอบ…":"ยืนยันเรียกช่างตามยอดที่แสดง"}</button>}
