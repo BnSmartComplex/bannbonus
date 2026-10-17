@@ -39,3 +39,7 @@ If a later approved release introduces application changes, roll back to the las
 ## Recovery evidence required before release
 
 Record the environment/ref (non-secret), backup timestamp, migration SHA, execution result, application SHA, rollback owner, restore procedure, and a successful restore rehearsal. Never store project passwords, service-role keys, access tokens, or customer data in this document or the PR.
+
+## Unmerged booking migration numbering
+
+The atomic booking migration is 0003_atomic_booking_approval.sql. It previously reused 0002, which belongs to 0002_rls_performance_hardening.sql and caused fresh Supabase startup to fail on the schema_migrations primary key. This is a filename-only correction to an unmerged migration; no hosted migration history is repaired or reapplied. Any environment that independently applied the earlier booking file needs separate schema/history review and a forward migration before rollout.

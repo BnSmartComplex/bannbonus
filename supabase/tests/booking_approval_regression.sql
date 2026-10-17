@@ -1,4 +1,4 @@
--- Database regression tests: isolated Supabase project with migrations 0001/0002 loaded.
+-- Database regression tests: isolated Supabase project with migrations 0001/0002/0003 loaded.
 -- pg_prove supplies TAP failure detection; all fixtures and extension changes roll back.
 -- Run only with a disposable PostgreSQL/Supabase test database, never production.
 begin;
