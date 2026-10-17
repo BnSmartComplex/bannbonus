@@ -26,21 +26,21 @@ Each test needs actual implementation evidence and pass/fail record. Focused exe
 - Assigned technician/operator sees full dossier with evidence and readiness state; unrelated technician and cross-tenant users are denied.
 - Customer receives essential safety warnings, accurate booking status and applicable service terms without exposure of internal diagnostic work.
 
-## Atomic approval database regression evidence (2026-10-17)
+## Release-blocker regression evidence (2026-10-17)
 
-- Baseline PR #8 (d1267346): 5 of the initial 17 database regression assertions failed.
-- Corrected migration: 27/27 pgTAP assertions passed on the isolated chang24-test PostgreSQL 17 project.
-- Tests set the authenticated database role and JWT subject for permission/RLS checks. They do not exercise GoTrue sign-in or HTTP JWT verification.
-- Migration 0002, extension changes and all randomly identified test fixtures were executed inside BEGIN/ROLLBACK. Post-run checks confirmed the appointment table and fixture tenants were absent. No persistent migration or production change was made.
-- Covers exact retry, changed-payload rejection, same/cross-tenant overlap, global database exclusion constraint, finite ranges, role/tenant denial, RLS, one audit event, revoked technician membership and Bangkok price boundaries.
-- Regression SQL: supabase/tests/booking_approval_regression.sql. Run with pg_prove against an isolated database with migrations 0001 and 0002 loaded, or within a single rollback-only SQL session after loading migration 0002. Never run against production.
-- Migration 0002 is still an unmerged initial migration. This revision edits it in place; any independently migrated environment needs a separately reviewed forward migration, not reapplication of this file.
+- `supabase/tests/booking_approval_regression.sql` now contains 40 rollback-only pgTAP assertions covering operator/admin directory authorization, tenant isolation, duplicate approval retries, invalid/backward technician transitions, idempotent status requests, cancellation-to-booking reconciliation, duplicate booking requests, overlap constraints and Bangkok boundaries.
+- The directory RPC is the only operator picker source; it is SECURITY DEFINER but returns rows only after checking operator/tenant_admin membership for the requested tenant.
+- `scripts/booking-approval-concurrency.mjs` performs a real two-authenticated-session exact-approval race against a disposable project and asserts one appointment id and one appointment row.
+- `src/lib/schedule.ts` validates real calendar dates, future ranges, end-after-start, and converts Asia/Bangkok wall-clock values to UTC before the RPC.
+- Advance bookings remain free. Appointment storage is explicitly `estimated_dispatch_fee_baht` with `payment_status = NOT_CHARGED` and a null actual fee; no payment API or billing write exists.
 
-### Remaining release gates
+### Credential-gated checks
 
-- Real Auth session expiry, Storage HTTP upload/read denial and simultaneous multi-session approval remain untested. Sequential overlap tests and a database exclusion constraint are not a claimed concurrency test.
-- Operator UI queries technician memberships through a self-only RLS policy, so it cannot list other technicians. Add a scoped staff directory/RPC and verify the UI before release.
-- Technician status RPC still lacks an enforced transition graph and booking cancellation reconciliation. Complete these against the approved state-machine contract; do not treat the current UI button sequence as backend enforcement.
-- Price helper currently uses scheduled start. GOLD specifies customer-confirmed dispatch time and free advance booking requests. The stored value must remain an estimate, with billing disabled until the dispatch approval flow exists.
-- Re-run CI and inspect Preview for the follow-up commit. Do not transfer baseline CI/Preview results to a changed commit.
-- Preserve the P0 and technical disclosure acceptance cases above. Passing this focused regression suite does not satisfy all release gates.
+- GoTrue Auth sign-in/session expiry, Storage HTTP upload/read denial and the two-session concurrency harness require isolated Supabase credentials. Missing credentials are an external blocker, not a code failure.
+- Run the SQL regression only in a disposable PostgreSQL/Supabase project with migrations 0001 and 0002 loaded. Never run it against production.
+- Migration 0002 remains an unmerged initial migration; an independently migrated environment requires a separately reviewed forward migration.
+
+### Release verification
+
+- CI and Vercel Preview must be checked against the new commit SHA; baseline `1852af2` results do not transfer to this change.
+- No production deploy, persistent production migration, or billing activation is part of this PR.

@@ -3,29 +3,58 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 
-type Job = { id: string; scheduled_start: string; scheduled_end: string; price_baht: number; status: string };
+type Job = {
+  id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  estimated_dispatch_fee_baht: number;
+  payment_status: "NOT_CHARGED";
+  status: string;
+};
+
 export default function TechnicianJobsPage() {
   const supabase = getSupabase();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [message, setMessage] = useState("");
+
   async function load() {
     if (!supabase) return;
-    const { data, error } = await supabase.from("booking_appointments").select("*").order("scheduled_start");
-    if (error) setMessage(error.message); else setJobs(data ?? []);
+    const { data, error } = await supabase
+      .from("booking_appointments")
+      .select("id,scheduled_start,scheduled_end,estimated_dispatch_fee_baht,payment_status,status")
+      .order("scheduled_start");
+    if (error) setMessage(error.message);
+    else setJobs((data ?? []) as Job[]);
   }
+
   useEffect(() => { void load(); }, [supabase]);
+
   async function update(id: string, status: string) {
     if (!supabase) return;
-    const { error } = await supabase.rpc("technician_update_appointment_status", { p_appointment_id: id, p_status: status });
-    setMessage(error?.message ?? "อัปเดตสถานะแล้ว"); if (!error) void load();
+    const { error } = await supabase.rpc("technician_update_appointment_status", {
+      p_appointment_id: id,
+      p_status: status,
+    });
+    setMessage(error?.message ?? "อัปเดตสถานะแล้ว");
+    if (!error) void load();
   }
-  return <section><h1>Technician · Jobs</h1><p role="status">{message}</p>
-    {jobs.map((job) => <article className="card" key={job.id}>
-      <p>{new Date(job.scheduled_start).toLocaleString("th-TH")} – {new Date(job.scheduled_end).toLocaleString("th-TH")}</p>
-      <p>ราคาอ้างอิง: {job.price_baht} บาท · {job.status}</p>
-      {job.status === "ASSIGNED" && <button className="btn" onClick={() => void update(job.id, "ACCEPTED")}>รับงาน</button>}
-      {job.status === "ACCEPTED" && <button className="btn" onClick={() => void update(job.id, "IN_PROGRESS")}>เริ่มงาน</button>}
-      {job.status === "IN_PROGRESS" && <button className="btn" onClick={() => void update(job.id, "COMPLETED")}>เสร็จงาน</button>}
-    </article>)}
-  </section>;
+
+  return (
+    <section>
+      <h1>Technician · Jobs</h1>
+      <p role="status">{message}</p>
+      {jobs.map((job) => (
+        <article className="card" key={job.id}>
+          <p>{new Date(job.scheduled_start).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} – {new Date(job.scheduled_end).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</p>
+          <p>ค่าประเมิน dispatch: {job.estimated_dispatch_fee_baht} บาท · ยังไม่เรียกเก็บเงิน · {job.status}</p>
+          {job.status === "ASSIGNED" && <button className="btn" onClick={() => void update(job.id, "ACCEPTED")}>รับงาน</button>}
+          {job.status === "ACCEPTED" && <button className="btn" onClick={() => void update(job.id, "IN_PROGRESS")}>เริ่มงาน</button>}
+          {job.status === "IN_PROGRESS" && <button className="btn" onClick={() => void update(job.id, "COMPLETED")}>เสร็จงาน</button>}
+          {["ASSIGNED", "ACCEPTED", "IN_PROGRESS"].includes(job.status) && (
+            <button className="btn" onClick={() => void update(job.id, "CANCELLED")}>ยกเลิกงาน</button>
+          )}
+        </article>
+      ))}
+    </section>
+  );
 }
