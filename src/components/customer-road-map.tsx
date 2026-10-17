@@ -93,6 +93,7 @@ export function CustomerRoadMap({
   const picked=useRef(onPick);
   const ready=useRef(false);
   const [error,setError]=useState("");
+  const [mapReady,setMapReady]=useState(false);
   picked.current=onPick;
 
   useEffect(()=>{
@@ -126,6 +127,7 @@ export function CustomerRoadMap({
         instance!.addSource(SOURCE,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
         instance!.addLayer({id:SOURCE,type:"line",source:SOURCE,layout:{"line-join":"round","line-cap":"round"},
           paint:{"line-color":"#e7bb5e","line-width":5,"line-opacity":0.96}});
+        setMapReady(true);
       });
       instance.on("error",()=>setError("แผนที่โหลดข้อมูลบางส่วนไม่ได้ กรุณาตรวจสอบการเชื่อมต่อ"));
     }).catch(()=>{if(alive)setError("โหลดแผนที่ไม่ได้ กรุณากรอกที่อยู่และให้ทีมงานตรวจสอบ");});
@@ -140,7 +142,7 @@ export function CustomerRoadMap({
     if(!window.maplibregl)return;
     marker.current=new window.maplibregl.Marker({color:"#39b6ff"}).setLngLat(coordinate(point)).addTo(map.current);
     if(!route)map.current.flyTo({center:coordinate(point),zoom:17});
-  },[point,route]);
+  },[point,route,mapReady]);
 
   useEffect(()=>{
     const current=map.current;
@@ -152,7 +154,7 @@ export function CustomerRoadMap({
       for(const p of route.coordinates)bounds.extend(p);
       current.fitBounds(bounds,{padding:48,maxZoom:17,duration:600});
     }
-  },[route,point]);
+  },[route,point,mapReady]);
 
   return <div className="card" style={{margin:"16px 0",padding:16}}>
     <h3 style={{marginTop:0}}>แผนที่สำนักงานไปยังบ้านลูกค้า</h3>
