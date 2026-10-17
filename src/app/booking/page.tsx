@@ -128,7 +128,7 @@ export default function BookingPage() {
   useEffect(() => {
     if (mode === "IMMEDIATE" && realtimeOpen === false) {
       setMode("BOOKING");
-      setPopup({kind:"CLOSED"});
+      setPopup(null);
     }
   }, [mode, realtimeOpen]);
 
@@ -412,7 +412,7 @@ export default function BookingPage() {
           setMode("BOOKING");
           throw new Error("ขณะนี้เรียกช่างเรียลไทม์ไม่ได้ กรุณาเลือกนัดหมายล่วงหน้า");
         }
-        throw new Error("เรียกช่างหรือนัดหมายไม่สำเร็จ กรุณาตรวจสอบที่อยู่และลองใหม่");
+        throw new Error("ดำเนินการไม่สำเร็จ กรุณาตรวจสอบที่อยู่และลองใหม่");
       }
       submitted = true;
       window.sessionStorage.removeItem(idempotencyStorageKey);
@@ -435,29 +435,35 @@ export default function BookingPage() {
 
   return (
     <section>
-      <span className="section-kicker">DAY NERAMIT · SERVICE REQUEST</span>
-      <h1>เรียกช่าง / นัดหมายช่าง</h1>
-      <p className="muted">เรียกช่างแบบเรียลไทม์ 10:00–01:59 น. ตามเวลาไทย · 02:00–09:59 น. เลือกนัดหมาย (Booking) ได้ตลอด</p>
-      {realtimeOpen === false && <p className="notice" role="status">ขณะนี้ปิดรับเรียกช่างเรียลไทม์ กรุณาเลือกนัดหมายล่วงหน้าแทน</p>}
-      <div className="request-modes" role="group" aria-label="เลือกประเภทคำขอ">
-        <button type="button" className={mode === "IMMEDIATE" ? "active" : ""} onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่างทันที</button>
-        <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า</button>
+      <h1 className="booking-title">{mode === "IMMEDIATE" ? "เรียกช่าง" : "นัดหมาย"}</h1>
+      <p className="booking-intro">แจ้งรายละเอียดงานและที่อยู่ ทีมงานจะยืนยันก่อนส่งช่าง</p>
+      <div className="request-modes" role="group" aria-label="เลือกบริการ">
+        <button type="button" disabled={realtimeOpen === false}
+          aria-pressed={mode === "IMMEDIATE"} className={mode === "IMMEDIATE" ? "active" : ""}
+          onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่าง</button>
+        <button type="button" aria-pressed={mode === "BOOKING"}
+          className={mode === "BOOKING" ? "active" : ""}
+          onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>นัดหมาย</button>
       </div>
-      <LiveAvailability compact category={values.category} area={values.area} onAreaChange={area=>update("area",area)} onCategoryChange={category=>update("category",category)}/>
-      <p className="notice">เมื่อกดเรียกช่างหรือนัดหมาย ทีมงานจะตรวจสอบก่อนยืนยัน ช่างยังไม่ออกเดินทางจนกว่าจะตกลงรายละเอียด</p>
-      {!configured && <p className="notice" role="status">ระบบรับคำขออยู่ระหว่างเตรียมเปิดให้บริการ ยังส่งคำขอไม่ได้ในขณะนี้</p>}
-      <p className="notice">
-        ต้องเข้าสู่ระบบก่อน · <Link href="/login">เข้าสู่ระบบ</Link> ·
-        ทีมงานจะตรวจสอบก่อนยืนยันวันเวลา
+      <p className="booking-availability-note">
+        {realtimeOpen === false
+          ? "ขณะนี้รับเฉพาะนัดหมาย · เรียกช่างได้อีกครั้งตั้งแต่ 10:00 น."
+          : "เรียกช่างได้ 10:00–02:00 น. · นัดหมายล่วงหน้าได้ทุกเวลา"}
       </p>
+      {mode === "IMMEDIATE" && realtimeOpen !== false && <details className="compact-availability">
+        <summary>ดูสถานะช่างในพื้นที่</summary>
+        <LiveAvailability compact category={values.category} area={values.area}
+          onAreaChange={area=>update("area",area)} onCategoryChange={category=>update("category",category)}/>
+      </details>}
+      {!configured && <p className="notice" role="status">ระบบยังไม่พร้อมรับงาน กรุณาติดต่อทีมงาน</p>}
       <form className="card" onSubmit={submit}>
         <fieldset disabled={busy || !configured || Boolean(success)}>
-          <legend>{mode === "IMMEDIATE" ? "ข้อมูลเรียกช่างตอนนี้" : "ข้อมูลนัดหมาย"}</legend>
+          <legend>รายละเอียดงาน</legend>
           {mode === "BOOKING" && <div className="schedule-grid">
             <div className="field"><label htmlFor="booking-date">วันที่ต้องการ *</label><input id="booking-date" type="date" required value={scheduleDraft.date} onChange={e=>{setScheduleDraft(v=>({...v,date:e.target.value}));resetIdempotencyKey();}}/></div>
             <div className="field"><label htmlFor="booking-start">เวลาเริ่ม *</label><input id="booking-start" type="time" required value={scheduleDraft.startTime} onChange={e=>{setScheduleDraft(v=>({...v,startTime:e.target.value}));resetIdempotencyKey();}}/></div>
             <div className="field"><label htmlFor="booking-end">เวลาสิ้นสุดประมาณการ *</label><input id="booking-end" type="time" required value={scheduleDraft.endTime} onChange={e=>{setScheduleDraft(v=>({...v,endTime:e.target.value}));resetIdempotencyKey();}}/></div>
-            <small>เลือกเวลาเริ่ม 10:00–01:59 น. ระบบรองรับงานที่สิ้นสุดวันถัดไป</small>
+            <small>เลือกช่วงเวลาที่ต้องการ เจ้าหน้าที่จะยืนยันเวลานัดอีกครั้ง</small>
           </div>}
         <div className="field">
           <label htmlFor="category">หมวดอุปกรณ์</label>
@@ -566,14 +572,22 @@ export default function BookingPage() {
         </div>
         <label>
           <input type="checkbox" checked={values.consent} onChange={(event) => update("consent", event.target.checked)} />
-          {" "}ยินยอมให้ใช้ข้อมูลติดต่อ ที่อยู่ พิกัดตำแหน่งที่ฉันยืนยัน และรูปภาพเพื่อประสานงานกับช่าง
+          {" "}ยินยอมให้ใช้ข้อมูลที่ให้ไว้เพื่อประสานงานกับช่าง
         </label>
-        <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : mode === "IMMEDIATE" ? "เรียกช่าง" : "นัดหมายช่าง"}</button></p>
+        <div className="booking-submit">
+          <button className="btn btn-gold" type="submit" disabled={busy || !values.consent || Boolean(success)}>
+            {busy ? "กำลังส่ง…" : mode === "IMMEDIATE" ? "ดูราคาและยืนยันเรียกช่าง" : "ส่งนัดหมาย"}
+          </button>
+          <small>ก่อนส่งช่าง เจ้าหน้าที่จะยืนยันรายละเอียดและค่าใช้จ่าย</small>
+        </div>
         </fieldset>
         {error && <div className="error" role="alert">{error}</div>}
-        {success && <div className="ok" role="status">ส่งเรื่องถึงทีมช่างแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูการเรียกช่างและนัดหมายของฉัน →</Link></p></div>}
+        {success && <div className="ok" role="status">ส่งเรื่องถึงทีมช่างแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ติดตามงาน →</Link></p></div>}
       </form>
-      <ServiceTerms />
+      <details className="terms-details">
+        <summary>ค่าบริการและเงื่อนไข</summary>
+        <ServiceTerms />
+      </details>
       {popup && <div role="presentation" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.78)",zIndex:1000,display:"grid",placeItems:"center",padding:16}}>
         <section role="dialog" aria-modal="true" aria-labelledby="realtime-confirm-title"
           style={{background:"#161616",color:"#fff",border:"1px solid #d7b56d",borderRadius:16,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto",padding:24,boxShadow:"0 25px 65px #000c"}}>
@@ -598,7 +612,7 @@ export default function BookingPage() {
           <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:20}}>
             {popup.kind==="QUOTE" && <button type="button" autoFocus className="btn btn-gold" disabled={busy}
               onClick={()=>void confirmRealtimePopup()}>{busy?"กำลังตรวจสอบ…":"ยืนยันเรียกช่างตามยอดที่แสดง"}</button>}
-            <button type="button" className="btn btn-outline" onClick={()=>{setPopup(null);setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า (Booking)</button>
+            <button type="button" className="btn btn-outline" onClick={()=>{setPopup(null);setMode("BOOKING");resetIdempotencyKey();}}>นัดหมาย</button>
             <button type="button" className="btn btn-outline" onClick={()=>setPopup(null)}>ปิด</button>
           </div>
         </section>
