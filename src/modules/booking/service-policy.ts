@@ -2,12 +2,12 @@
  * Owner-confirmed policy, 2026-10-17 (supersedes PR #6's 22:00 boundary).
  * Pure reference calculations only; no booking, assignment or billing writes.
  * Local Chang24 owner update: office -> customer, not technician base -> customer.
- * Only the actual staff-verified office departure timestamp establishes the tariff.
- * A future server command must recheck verified road routing and persist the
- * disclosed fee, explicit customer approval and actual office departure.
+ * Owner update 2026-10-18: CHANG24 realtime base fee is determined by the
+ * authenticated request's SERVER-RECEIVED CLICK TIME, not technician departure.
+ * Route and any extra-distance charge still require verified road travel and consent.
  */
 export const SERVICE_POLICY = {
-  version: "2026-10-17-21h",
+  version: "2026-10-18-realtime-click",
   timeZone: "Asia/Bangkok",
   dispatchHours: "10:00–02:00",
   ordinaryHours: "10:00–20:59",
@@ -25,7 +25,7 @@ const bangkokClock = new Intl.DateTimeFormat("en-GB", {
   timeZone: SERVICE_POLICY.timeZone, hour: "2-digit", hourCycle: "h23",
 });
 
-/** Only NEW immediate dispatch is subject to this clock, never existing jobs or free requests. */
+/** This clock gates NEW REALTIME REQUESTS, not existing work or 24/7 advance booking. */
 export function dispatchWindow(instant: Date): DispatchWindow {
   if (!Number.isFinite(instant.getTime())) throw new Error("INVALID_DISPATCH_INSTANT");
   const hour = Number(bangkokClock.format(instant));
@@ -39,15 +39,15 @@ type CalloutEstimate =
   | { status: "ESTIMATE"; feeBaht: number };
 
 /**
- * Distance must be a verified road route from the assigned contractor's base,
+ * Distance must be a verified road route from the Chang24 office,
  * not customer input or straight-line distance. null means not yet verified.
  * Never round an excess distance into the included range. This is NOT a quote,
  * permission to dispatch, or authorization to collect money.
  */
 export function estimateCallout(
-  actualOfficeDepartureAt: Date, verifiedRoadDistanceMeters: number | null,
+  realtimeRequestReceivedAt: Date, verifiedRoadDistanceMeters: number | null,
 ): CalloutEstimate {
-  const window = dispatchWindow(actualOfficeDepartureAt);
+  const window = dispatchWindow(realtimeRequestReceivedAt);
   if (window === "CLOSED") return { status: "CLOSED", feeBaht: null };
   if (verifiedRoadDistanceMeters === null ||
       !Number.isFinite(verifiedRoadDistanceMeters) || verifiedRoadDistanceMeters < 0) {
