@@ -140,7 +140,7 @@ export default function TechnicianJobsPage() {
       {jobs.map((job) => (
         <article className="card" key={job.id}>
           <p>{new Date(job.scheduled_start).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} – {new Date(job.scheduled_end).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</p>
-          <p>ค่าประเมิน dispatch: {job.estimated_dispatch_fee_baht} บาท · ยังไม่เรียกเก็บเงิน · {job.status}</p>
+          <p>ค่าบริการออกตรวจ: รอตรวจระยะทางตามถนนจากสำนักงานและเวลาที่ออกเดินทางจริง · ยังไม่เรียกเก็บเงิน · {job.status}</p>
           {job.status === "ASSIGNED" && <button className="btn" onClick={() => void update(job.id, "ACCEPTED")}>รับงาน</button>}
           {job.status === "ACCEPTED" && <button className="btn" onClick={() => void update(job.id, "IN_PROGRESS")}>เริ่มงาน</button>}
           {job.status === "IN_PROGRESS" && <button className="btn" onClick={() => void update(job.id, "COMPLETED")}>เสร็จงาน</button>}
