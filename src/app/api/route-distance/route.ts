@@ -2,29 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
-import { estimateCallout } from "@/modules/booking/service-policy";
+import { parseRouteDurationSeconds, previewOfficeDeparture } from "@/lib/office-route";
 
 export const runtime = "nodejs";
 
-const coordinate = z.object({
-  latitude: z.number().finite().min(5).max(21),
-  longitude: z.number().finite().min(97).max(106),
-});
+/** Customer is never allowed to specify the origin, fee or departure timestamp. */
+const destination = z.union([
+  z.object({
+    latitude: z.number().finite().min(5).max(21),
+    longitude: z.number().finite().min(97).max(106),
+  }).strict(),
+  z.object({
+    address: z.string().trim().min(15).max(600),
+    district: z.enum(["BANG_YAI", "BANG_BUA_THONG"]),
+  }).strict(),
+]);
 
 function json(body: object, status: number) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 /**
- * Server-only driving distance preview. Never bills a customer.
- * This endpoint requires an actual Supabase Auth session and a configured
- * Google Routes API key. Exact map base can be overridden by VERIFIED place ID.
+ * Office -> customer driving route preview, authenticated and server-only.
+ * Google Routes key must be provisioned with project-level usage limits.
+ * This previews leaving the office NOW; it does not record actual departure
+ * or authorize dispatch/payment. Re-evaluate for the actual office departure.
  */
 export async function POST(request: NextRequest) {
   const raw = await request.json().catch(() => null);
-  const parsed = coordinate.safeParse(raw);
+  const parsed = destination.safeParse(raw);
   if (!parsed.success) return json({ error: "INVALID_CUSTOMER_LOCATION" }, 400);
-
   const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   if (!bearer) return json({ error: "LOGIN_REQUIRED" }, 401);
 
@@ -41,6 +48,9 @@ export async function POST(request: NextRequest) {
   const origin = process.env.DAY_NERAMIT_VERIFIED_PLACE_ID
     ? { placeId: process.env.DAY_NERAMIT_VERIFIED_PLACE_ID }
     : { address: `${dayNeramitBusiness.officeAddress}, ประเทศไทย` };
+  const end = "latitude" in parsed.data
+    ? { location: { latLng: { latitude: parsed.data.latitude, longitude: parsed.data.longitude } } }
+    : { address: `${parsed.data.address}, ${parsed.data.district === "BANG_YAI" ? "อำเภอบางใหญ่" : "อำเภอบางบัวทอง"}, จังหวัดนนทบุรี ประเทศไทย` };
   try {
     const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
       method: "POST",
@@ -51,9 +61,9 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         origin,
-        destination: { location: { latLng: parsed.data } },
+        destination: end,
         travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_UNAWARE",
+        routingPreference: "TRAFFIC_AWARE",
         units: "METRIC",
         languageCode: "th",
       }),
@@ -66,17 +76,24 @@ export async function POST(request: NextRequest) {
     if (!route || !Number.isSafeInteger(route.distanceMeters) || (route.distanceMeters ?? -1) < 0) {
       return json({ error: "DRIVING_ROUTE_NOT_FOUND" }, 422);
     }
-    const distanceMeters = route.distanceMeters!;
-    const estimate = estimateCallout(new Date(), distanceMeters);
+    const seconds = parseRouteDurationSeconds(route.duration);
+    if (seconds === null) return json({ error: "DRIVING_ETA_NOT_AVAILABLE" }, 422);
+    const departureNow = new Date();
+    const preview = previewOfficeDeparture(departureNow, route.distanceMeters!, seconds);
     return json({
-      distanceMeters,
-      duration: route.duration ?? null,
+      distanceMeters: route.distanceMeters,
+      durationSeconds: seconds,
+      durationMinutes: Math.ceil(seconds / 60),
+      originOfficeAddress: dayNeramitBusiness.officeAddress,
+      originOfficeMapUrl: dayNeramitBusiness.officeMapUrl,
       provider: "GOOGLE_ROUTES",
-      calculatedAt: new Date().toISOString(),
-      origin: "DAY_NERAMIT_OFFICE",
-      estimateStatus: estimate.status,
-      estimateFeeBaht: estimate.feeBaht,
-      notice: "ระยะทางเบื้องต้นจากสำนักงาน ยังไม่ใช่ราคาที่ตกลงหรืออนุมัติการออกเดินทาง ต้องตรวจสอบฐานของช่างที่จะรับงาน",
+      calculatedAt: departureNow.toISOString(),
+      departureAt: preview.departureAt,
+      estimatedArrivalAt: preview.estimatedArrivalAt,
+      departureWindow: preview.departureWindow,
+      estimateStatus: preview.estimateStatus,
+      estimateFeeBaht: preview.estimateFeeBaht,
+      notice: "คำนวณจากสำนักงานไปหาลูกค้า หากช่างออกเดินทางภายในตอนนี้เท่านั้น เวลาจริงและราคาอาจเปลี่ยน ต้องให้ทีมงานยืนยันก่อนออกเดินทาง",
     }, 200);
   } catch {
     return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" }, 503);
