@@ -1,22 +1,44 @@
 import Link from "next/link";
-import { ServiceTerms } from "@/components/service-terms";
-import { ArrowRight, ShieldCheck, Wrench } from "lucide-react";
+import { ArrowUpRight, Clock3, ShieldCheck, Wind, Wrench, Waves, PlugZap, Refrigerator, WashingMachine, Laptop, PhoneCall, CalendarClock, ArrowRight } from "lucide-react";
+import { LiveAvailability } from "@/components/live-availability";
+
+const services = [
+  { name: "เครื่องปรับอากาศ", description: "ล้าง ตรวจซ่อม ติดตั้งและย้ายแอร์", Icon: Wind, category: "AIR_CONDITIONER" },
+  { name: "ไฟฟ้าภายในบ้าน", description: "ตรวจอาการและงานระบบไฟฟ้า", Icon: PlugZap, category: "ELECTRICAL" },
+  { name: "งานประปา", description: "ท่อน้ำ ก๊อก สุขภัณฑ์และระบบน้ำ", Icon: Waves, category: "PLUMBING" },
+  { name: "ตู้เย็น", description: "ตรวจและซ่อมระบบทำความเย็น", Icon: Refrigerator, category: "REFRIGERATOR" },
+  { name: "เครื่องซักผ้า", description: "ตรวจซ่อมการทำงานและอาการเสีย", Icon: WashingMachine, category: "WASHING_MACHINE" },
+  { name: "คอมพิวเตอร์ / อิเล็กทรอนิกส์", description: "อุปกรณ์ไฟฟ้าและเทคโนโลยี", Icon: Laptop, category: "ELECTRONICS" },
+  { name: "ซ่อมบ้านและงานช่างอื่น ๆ", description: "สอบถามรายละเอียดงานทุกประเภท", Icon: Wrench, category: "OTHER" },
+];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3 font-bold"><span className="rounded-xl bg-blue-950 p-3 text-white"><Wrench aria-hidden="true" size={22}/></span>BannBonus</div>
-        <span className="text-sm text-slate-600">กรุงเทพฯ และนนทบุรี</span>
-      </header>
-      <section className="mx-auto grid min-h-[70vh] max-w-6xl content-center gap-8 px-6 py-16">
-        <span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800">BNSmart · Field Service Platform</span>
-        <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight md:text-6xl">ประสานงานช่างรับเหมาอิสระ <span className="text-blue-700">ทีมงานตรวจสอบก่อนยืนยันบริการ</span></h1>
-        <p className="max-w-2xl text-lg leading-relaxed text-slate-600">รับงานเรียกช่างใหม่ทุกวัน 10:00–02:00 น. ของวันถัดไป ส่งคำขอ Booking ล่วงหน้าได้ฟรีตลอดเวลา เจ้าหน้าที่ตรวจสอบก่อนยืนยันนัด</p>
-        <div className="flex flex-wrap items-center gap-4"><Link className="inline-flex items-center gap-2 rounded-xl bg-blue-950 px-6 py-4 font-semibold text-white" href="/booking"><ArrowRight aria-hidden="true" size={20}/> ส่งคำขอ Booking ล่วงหน้า</Link><Link className="text-sm font-semibold" href="/my-bookings">ดูคำขอของฉัน</Link><span className="inline-flex items-center gap-2 text-sm text-slate-600"><ShieldCheck aria-hidden="true" size={20}/> ทุกคำขอรอทีมงานยืนยัน</span></div>
-        <p className="mt-8 rounded-xl bg-blue-50 p-4 text-sm leading-relaxed text-slate-700">เว็บไซต์อยู่ระหว่างทดสอบ ยังไม่เปิดให้จองบริการจริง</p>
-        <ServiceTerms />
+    <>
+      <section className="gold-hero" aria-labelledby="hero-title">
+        <div className="hero-copy">
+          <div className="eyebrow"><span className="gold-dot" /> บริการช่างนนทบุรี · กรุงเทพฯ</div>
+          <div className="hero-logo" aria-label="Day Neramit">
+            <img src="https://chang.bannbonus.chatgpt.site/logo.svg" width="116" height="106" alt="โลโก้ Day Neramit" />
+            <div><span className="overline">DAY NERAMIT</span><h1 id="hero-title">ช่างเดย์<span>เนรมิต</span></h1><div className="hero-mini">SMART REPAIR &amp; RENOVATION</div></div>
+          </div>
+          <h2>เรื่องบ้านให้เราดูแล <em>เรียกช่างได้ทันที</em> เมื่อทีมพร้อม</h2>
+          <p className="hero-lead">ซ่อมแซม ติดตั้ง และดูแลบ้านแบบมืออาชีพ เลือกเรียกช่างในเวลาบริการ หรือจองวันอื่นได้ตลอด 24 ชั่วโมง พร้อมติดตามสถานะจริง</p>
+          <div className="hero-actions"><Link className="btn btn-gold" href="/booking?mode=IMMEDIATE">เรียกช่างตอนนี้ <ArrowUpRight size={19} /></Link><Link className="btn btn-outline" href="/booking?mode=BOOKING">นัดวันอื่น <CalendarClock size={19}/></Link></div>
+          <div className="hero-quick"><span><Clock3 size={17}/> รับเรียกช่าง 10:00–02:00 น.</span><span><ShieldCheck size={17}/> นัดหมายยืนยันโดยทีมงาน</span></div>
+        </div>
+        <div className="hero-aside"><div className="hero-art"><div className="hero-circuit" /><img src="https://chang.bannbonus.chatgpt.site/logo.svg" alt="" aria-hidden="true" width="300" height="272" /><p>ช่างเดย์เนรมิต</p><small>บริการครบ จบในที่เดียว</small></div><LiveAvailability /></div>
       </section>
-    </main>
+      <section className="section-block" id="services">
+        <div className="section-heading"><div><span className="section-kicker">OUR SERVICES</span><h2>บริการช่างครบวงจร</h2><p>เลือกประเภทงาน แจ้งอาการ และติดตามการรับงานได้ในระบบเดียว</p></div><Link href="/booking" className="section-link">ส่งคำขอ <ArrowRight size={17}/></Link></div>
+        <div className="service-grid">{services.map(({name,description,Icon,category}) => <Link key={category} href={`/booking?category=${category}`} className="service-card"><span className="service-icon"><Icon size={28} strokeWidth={1.6}/></span><strong>{name}</strong><p>{description}</p><span className="service-more">เรียกบริการ <ArrowUpRight size={16}/></span></Link>)}</div>
+      </section>
+      <section className="two-panel">
+        <div className="info-panel"><span className="section-kicker">REAL-TIME DISPATCH</span><h2>เรียกช่างทันที เมื่อสถานะพร้อม</h2><p>ช่างต้องออนไลน์ มีทักษะตรงพื้นที่ และไม่ติดงานหรือคิวซ้อน หากไม่ว่าง ระบบจะเปิดทางเลือก Booking โดยไม่สัญญาคิวที่ยังไม่ได้ยืนยัน</p><Link href="/booking?mode=IMMEDIATE" className="btn btn-gold">ตรวจสถานะและเรียกช่าง <ArrowRight size={18}/></Link></div>
+        <div className="info-panel muted-panel"><span className="section-kicker">24/7 ADVANCE BOOKING</span><h2>จองล่วงหน้าได้ตลอด 24 ชั่วโมง</h2><p>เลือกเวลาที่สะดวก หากช่างไม่พร้อม เจ้าหน้าที่เสนอวันและเวลาอื่นในรายการจอง ลูกค้ายอมรับก่อนทีมงานยืนยันคิวจริง</p><Link href="/my-bookings" className="btn btn-outline">ติดตามและยืนยันเวลานัด <ArrowRight size={18}/></Link></div>
+      </section>
+      <section className="steps-block"><span className="section-kicker">HOW IT WORKS</span><h2>ง่าย ชัดเจน ทุกขั้นตอน</h2><div className="steps-grid"><div><b>01</b><h3>แจ้งงาน</h3><p>เลือกเรียกทันทีหรือ Booking พร้อมรายละเอียดและรูปอุปกรณ์</p></div><div><b>02</b><h3>เช็กสถานะช่าง</h3><p>ระบบประเมินคิวและความพร้อมจากข้อมูลจริง ทีมงานตรวจสอบคำขอ</p></div><div><b>03</b><h3>ยืนยันวันและเวลา</h3><p>เมื่อเลื่อนนัด ลูกค้าตอบรับในระบบ แล้วทีมงานคอนเฟิร์มและมอบหมายช่าง</p></div></div></section>
+      <section className="cta-panel"><div><span className="section-kicker">DAY NERAMIT</span><h2>งานซ่อมที่บ้าน เริ่มได้ที่นี่</h2><p>กรุงเทพมหานครและนนทบุรี · เรียกช่างตามสถานะจริง · Booking ล่วงหน้า 24 ชั่วโมง</p></div><div className="cta-buttons"><Link className="btn btn-gold" href="/booking">เริ่มเรียกช่าง <ArrowUpRight size={18}/></Link><a className="btn btn-outline" href="tel:0924367468"><PhoneCall size={17}/> 092-436-7468</a></div></section>
+    </>
   );
 }
