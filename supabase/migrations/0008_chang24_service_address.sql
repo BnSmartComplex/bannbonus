@@ -108,5 +108,5 @@ revoke all on function public.create_chang24_service_request(
   text,text,text,text,text,text,numeric,numeric,text,text,text[],boolean,uuid,text,timestamptz,timestamptz
 ) from public,anon,authenticated,service_role;
 grant execute on function public.create_chang24_service_request(
-  text,text,text,text,text,text,text,text,text[],boolean,uuid,text,timestamptz,timestamptz
+  text,text,text,text,text,text,numeric,numeric,text,text,text[],boolean,uuid,text,timestamptz,timestamptz
 ) to authenticated;
