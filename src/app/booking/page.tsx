@@ -64,7 +64,15 @@ export default function BookingPage() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [geoMessage, setGeoMessage] = useState("");
   const [checkingDistance, setCheckingDistance] = useState(false);
-  const [distance, setDistance] = useState<{distanceMeters:number;estimateStatus:string;estimateFeeBaht:number|null}|null>(null);
+  const [distance, setDistance] = useState<{
+    distanceMeters: number;
+    durationMinutes: number;
+    departureAt: string;
+    estimatedArrivalAt: string;
+    departureWindow: "ORDINARY" | "NIGHT" | "CLOSED";
+    estimateStatus: string;
+    estimateFeeBaht: number | null;
+  } | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,6 +89,48 @@ export default function BookingPage() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  async function requestRoute(destination: { latitude:number; longitude:number } | { address:string; district:"BANG_YAI"|"BANG_BUA_THONG" }) {
+    setCheckingDistance(true);
+    setDistance(null);
+    const supabase = getSupabase();
+    const { data: { session } } = supabase
+      ? await supabase.auth.getSession()
+      : { data: { session: null } };
+    if (!session) {
+      setGeoMessage("กรุณาเข้าสู่ระบบก่อนดูระยะทางอัตโนมัติ หรือเปิด Google Maps ดูเส้นทางได้");
+      setCheckingDistance(false);
+      return;
+    }
+    try {
+      const response = await fetch("/api/route-distance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(destination),
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (response.ok && typeof result.distanceMeters === "number"
+          && typeof result.durationMinutes === "number") {
+        setDistance(result);
+        setGeoMessage("คำนวณเส้นทางขับรถจากสำนักงานไปหาลูกค้าแล้ว (ยังไม่ใช่การยืนยันค่าบริการ)");
+      } else {
+        setGeoMessage("ยังคำนวณระยะทางอัตโนมัติไม่ได้ กรุณาดูเส้นทางใน Google Maps หรือให้ทีมงานตรวจสอบ");
+      }
+    } catch {
+      setGeoMessage("บริการคำนวณเส้นทางขัดข้อง กรุณาใช้ Google Maps หรือให้ทีมงานตรวจสอบ");
+    } finally {
+      setCheckingDistance(false);
+    }
+  }
+
+  function previewAddressRoute() {
+    if (values.service_address.trim().length < 15) {
+      setGeoMessage("กรุณากรอกที่อยู่ลูกค้าให้ครบก่อนคำนวณระยะทาง");
+      return;
+    }
+    void requestRoute({ address: values.service_address.trim(), district: values.district });
+  }
+
   function useMyLocation() {
     setDistance(null);
     setGeoMessage("");
@@ -95,33 +145,7 @@ export default function BookingPage() {
       setCustomerCoords(point);
       resetIdempotencyKey();
       setGeoMessage("ได้รับพิกัดจากอุปกรณ์แล้ว โปรดยืนยันว่าตำแหน่งนี้ตรงกับบ้านที่ต้องการให้ช่างไป");
-      const supabase = getSupabase();
-      const { data: { session } } = supabase
-        ? await supabase.auth.getSession()
-        : { data: { session: null } };
-      if (!session) {
-        setGeoMessage("ได้รับพิกัดแล้ว กรุณาเข้าสู่ระบบก่อนตรวจระยะทาง หรือให้เจ้าหน้าที่ตรวจสอบภายหลัง");
-        setCheckingDistance(false);
-        return;
-      }
-      try {
-        const response = await fetch("/api/route-distance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify(point),
-          cache: "no-store",
-        });
-        const result = await response.json();
-        if (response.ok && typeof result.distanceMeters === "number") {
-          setDistance(result);
-        } else {
-          setGeoMessage("ได้รับพิกัดแล้ว แต่ยังคำนวณระยะทางจริงไม่ได้ กรุณายืนยันที่อยู่เพื่อรอเจ้าหน้าที่ตรวจสอบ");
-        }
-      } catch {
-        setGeoMessage("ได้รับพิกัดแล้ว แต่บริการคำนวณเส้นทางไม่พร้อมใช้งาน");
-      } finally {
-        setCheckingDistance(false);
-      }
+      void requestRoute(point);
     }, () => {
       setCustomerCoords(null);
       setGeoMessage("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณากรอกที่อยู่ให้ครบเพื่อให้เจ้าหน้าที่ตรวจสอบ");
@@ -311,17 +335,24 @@ export default function BookingPage() {
             <input type="checkbox" checked={locationConfirmed} onChange={event=>{setLocationConfirmed(event.target.checked);resetIdempotencyKey();}}/>
             {" "}ยืนยันว่าพิกัดนี้คือสถานที่ที่จะให้ช่างไป
           </label>}
+          <p><button className="btn btn-outline" type="button" disabled={checkingDistance || values.service_address.trim().length < 15}
+            onClick={previewAddressRoute}>
+            {checkingDistance ? "กำลังคำนวณ…" : "คำนวณระยะทางจากที่อยู่ลูกค้า"}
+          </button></p>
           {geoMessage && <p className="notice" role="status">{geoMessage}</p>}
           {distance && <div className="notice" role="status">
-            ระยะทางขับรถจากสำนักงานโดยประมาณ: {(distance.distanceMeters / 1000).toFixed(2)} กม.
-            <p>{mode === "BOOKING"
-              ? "ค่าออกตรวจจะขึ้นอยู่กับเวลาที่ลูกค้ายืนยันเรียกช่างและฐานช่างที่ได้รับมอบหมาย"
-              : distance.estimateStatus === "EXCESS_DISTANCE_REVIEW"
-              ? "เกิน 5 กม. ต้องรอทีมงานตรวจสอบค่าเดินทาง"
-              : distance.estimateStatus === "ESTIMATE"
-                ? `ค่าออกตรวจเบื้องต้น ${distance.estimateFeeBaht} บาท (ยังไม่ใช่ราคาที่อนุมัติ)`
-                : "ยังไม่สามารถยืนยันราคาได้"}</p>
-            <small>เส้นทางจากสำนักงานเป็นข้อมูลเบื้องต้น หากช่างออกจากฐานอื่น ต้องตรวจสอบระยะทางใหม่ก่อนยืนยันราคา</small>
+            <strong>สำนักงาน → บ้านลูกค้า</strong>
+            <p>ระยะทางขับรถ: {(distance.distanceMeters / 1000).toFixed(2)} กม. · ใช้เวลาเดินทางประมาณ {distance.durationMinutes} นาที (ประเมินจากสภาพการจราจร)</p>
+            <p>หากออกจากสำนักงานตอน {new Date(distance.departureAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.
+              คาดว่าจะถึงประมาณ {new Date(distance.estimatedArrivalAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.</p>
+            <p>{distance.estimateStatus === "EXCESS_DISTANCE_REVIEW"
+              ? "เกิน 5 กม. ต้องให้ทีมงานตรวจสอบและตกลงค่าเดินทางก่อน"
+              : distance.estimateStatus === "CLOSED"
+                ? "ตอนนี้อยู่นอกเวลาออกเดินทางใหม่ 02:00–09:59 น. กรุณานัดหมายล่วงหน้า"
+                : distance.estimateStatus === "ESTIMATE"
+                  ? `ถ้าออกจากสำนักงานในช่วงเวลาที่ประเมิน ค่าออกตรวจเบื้องต้น ${distance.estimateFeeBaht} บาท (ยังไม่ใช่ราคาที่ยืนยัน)`
+                  : "ยังไม่สามารถยืนยันค่าบริการได้"}</p>
+            <small>ค่าบริการคิดจากเวลาที่ช่างออกเดินทางจริง ณ สำนักงาน ไม่ใช่เวลาที่ลูกค้ากดเรียกช่างหรือเวลาถึงบ้าน ระยะทางและเวลานี้เป็นการประเมิน ต้องตรวจสอบยืนยันก่อนออกเดินทาง</small>
           </div>}
           {(customerCoords || values.service_address.trim().length >= 15) && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางและระยะทางบน Google Maps</button></p>}
           {!distance && <p className="muted">ยังไม่ยืนยันระยะทางตามถนนและค่าบริการ เจ้าหน้าที่จะตรวจสอบก่อนนัดหมายหรือออกเดินทาง</p>}
