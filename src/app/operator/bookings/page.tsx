@@ -31,6 +31,7 @@ export default function OperatorBookingsPage(){
  const [drafts,setDrafts]=useState<Record<string,ScheduleDraft>>({});
  const [message,setMessage]=useState("");
  const [busy,setBusy]=useState<string|null>(null);
+ const [filter,setFilter]=useState<"ALL"|"IMMEDIATE"|"BOOKING">("ALL");
  const load=useCallback(async()=>{
   if(!supabase){setMessage("ยังไม่ได้เชื่อมต่อฐานข้อมูล");return;}
   const {data:{user}}=await supabase.auth.getUser();
@@ -81,7 +82,8 @@ export default function OperatorBookingsPage(){
   <p className="muted">รายการเรียกทันทีและ Booking ล่วงหน้าอยู่ในหน้าจอเดียว · ตรวจคิวและอนุมัติจาก Backend</p>
   <div className="dashboard-actions"><button className="btn btn-outline" type="button" onClick={()=>void load()}><RefreshCw size={17}/> อัปเดตคำขอ</button><Link className="btn btn-outline" href="/technician/jobs">หน้าช่าง →</Link></div>
   <p className="notice" role="status">{message}</p>
-  {bookings.map(item=>{
+  <div className="request-modes" role="group" aria-label="กรองคำขอ"><button type="button" className={filter==="ALL"?"active":""} onClick={()=>setFilter("ALL")}>คำขอทั้งหมด</button><button type="button" className={filter==="IMMEDIATE"?"active":""} onClick={()=>setFilter("IMMEDIATE")}>เรียกช่างทันที</button><button type="button" className={filter==="BOOKING"?"active":""} onClick={()=>setFilter("BOOKING")}>Booking ล่วงหน้า</button></div>
+  {bookings.filter(item=>filter==="ALL"||item.request_mode===filter).map(item=>{
    const draft=drafts[item.id]??initialDraft(item);
    const technicians=techniciansByTenant[item.tenant_id]??[];
    const customerAccepted=item.alternative_status==="CUSTOMER_ACCEPTED";
