@@ -50,7 +50,7 @@ export function realtimeQuote(
     baseFeeBaht: null, extraFeeBaht: null, totalBaht: null, rounding: null,
   };
   if (extraMeters > 0 && (excessBahtPerKm === null || rounding === null)) return {
-    status: "PRICING_NOT_APPROVED", requestAt, distanceMeters, extraMeters,
+    status: "PRICING_NOT_APPROVED", requestAt, distanceMeters, extraMeters, billableExtraKilometres,
     baseFeeBaht: null, extraFeeBaht: null, totalBaht: null, rounding: null,
   };
   if (excessBahtPerKm !== null && (!Number.isSafeInteger(excessBahtPerKm)
