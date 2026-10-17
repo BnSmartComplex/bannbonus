@@ -64,8 +64,10 @@ select is(
   false, 'offline technician is not available'
 );
 
+reset role;
 insert into public.technician_capabilities(tenant_id, technician_id, service_area, skill)
 values (pg_temp.c1_id('tenant'), pg_temp.c1_id('technician'), 'BANGKOK', 'AIR_CONDITIONER');
+set local role authenticated;
 select set_config('request.jwt.claim.sub', pg_temp.c1_id('technician')::text, true);
 select lives_ok(
   $q$select public.set_technician_presence(pg_temp.c1_id('tenant'), 'ONLINE')$q$,
