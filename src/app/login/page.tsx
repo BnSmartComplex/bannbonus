@@ -1,63 +1,54 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { GoogleIcon } from "@/components/google-icon";
 
 export default function LoginPage() {
   const staffPortal = process.env.NEXT_PUBLIC_APP_PORTAL === "STAFF";
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function loginWithGoogle() {
     setMessage("");
     const supabase = getSupabase();
     if (!supabase) {
-      setMessage("ยังไม่ได้ตั้งค่า Supabase สำหรับสภาพแวดล้อมนี้");
+      setMessage("ระบบเข้าสู่ระบบยังไม่พร้อมใช้งาน กรุณาติดต่อทีมงาน");
       return;
     }
-
     setBusy(true);
     try {
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          shouldCreateUser: !staffPortal,
-          emailRedirectTo: `${window.location.origin}${staffPortal ? "/" : "/booking"}`,
-        },
+      const next = staffPortal ? "/" : "/booking";
+      const callback = new URL("/auth/callback", window.location.origin);
+      callback.searchParams.set("next", next);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
       });
-      setMessage(otpError
-        ? "ส่งลิงก์ไม่สำเร็จ กรุณาลองอีกครั้งหรือติดต่อทีมงาน"
-        : "หากระบบส่งอีเมลได้สำเร็จ กรุณาเปิดลิงก์ยืนยันเพื่อเข้าสู่ระบบ");
+      if (error) {
+        setMessage("เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อทีมงาน");
+        setBusy(false);
+      }
+      // On success the browser navigates to Google; do not claim authentication yet.
     } catch {
-      setMessage("ส่งลิงก์ไม่สำเร็จ กรุณาลองอีกครั้งหรือติดต่อทีมงาน");
-    } finally {
+      setMessage("ไม่สามารถเชื่อมต่อ Google ได้ในขณะนี้ กรุณาลองใหม่");
       setBusy(false);
     }
   }
 
-  return (
-    <section>
-      <h1>{staffPortal ? "เข้าสู่ระบบช่างและ Admin" : "เข้าสู่ระบบลูกค้า"}</h1>
-      {staffPortal && <p className="notice">ใช้บัญชีทีมงานที่ได้รับสิทธิ์จากผู้ดูแลระบบเท่านั้น · หน้าเข้าสู่ระบบนี้ไม่สร้างบัญชีใหม่</p>}
-      <form className="card" onSubmit={submit}>
-        <div className="field">
-          <label htmlFor="email">อีเมล</label>
-          <input
-            autoComplete="email"
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </div>
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? "กำลังส่ง…" : "ส่งลิงก์เข้าสู่ระบบ"}
-        </button>
-        {message && <p aria-live="polite">{message}</p>}
-      </form>
-    </section>
-  );
+  return <section className="simple-login" aria-labelledby="login-title">
+    <div className="login-shell">
+      <span className="section-kicker">DAY NERAMIT</span>
+      <h1 id="login-title">{staffPortal ? "เข้าสู่ระบบทีมงาน" : "เข้าสู่ระบบ"}</h1>
+      <p className="muted">{staffPortal
+        ? "สำหรับช่างและผู้ดูแลที่ได้รับสิทธิ์เท่านั้น"
+        : "เลือกบัญชี Google เพื่อเริ่มเรียกช่างหรือนัดหมาย ไม่ต้องรอลิงก์ทางอีเมล"}</p>
+      <button className="google-login-button" type="button" onClick={() => void loginWithGoogle()} disabled={busy}>
+        <GoogleIcon /> {busy ? "กำลังเปิด Google…" : "ดำเนินการต่อด้วย Google"}
+      </button>
+      {message && <p className="error" role="alert">{message}</p>}
+      {staffPortal && <small className="muted">การเข้าด้วย Google ไม่ได้ให้สิทธิ์ทีมงานอัตโนมัติ ต้องได้รับอนุมัติสิทธิ์จาก Admin ก่อน</small>}
+      <small className="muted">เข้าสู่ระบบผ่าน Google โดยตรง ไม่มีการส่งลิงก์ยืนยันเข้าอีเมล</small>
+    </div>
+  </section>;
 }
