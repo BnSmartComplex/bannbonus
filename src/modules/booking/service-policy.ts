@@ -1,8 +1,10 @@
 /**
  * Owner-confirmed policy, 2026-10-17 (supersedes PR #6's 22:00 boundary).
  * Pure reference calculations only; no booking, assignment or billing writes.
- * A future server command must load tenant policy and verified road routing from
- * trusted sources, then persist the disclosed fee and customer approval.
+ * Local Chang24 owner update: office -> customer, not technician base -> customer.
+ * Only the actual staff-verified office departure timestamp establishes the tariff.
+ * A future server command must recheck verified road routing and persist the
+ * disclosed fee, explicit customer approval and actual office departure.
  */
 export const SERVICE_POLICY = {
   version: "2026-10-17-21h",
@@ -43,9 +45,9 @@ type CalloutEstimate =
  * permission to dispatch, or authorization to collect money.
  */
 export function estimateCallout(
-  confirmedDispatchAt: Date, verifiedRoadDistanceMeters: number | null,
+  actualOfficeDepartureAt: Date, verifiedRoadDistanceMeters: number | null,
 ): CalloutEstimate {
-  const window = dispatchWindow(confirmedDispatchAt);
+  const window = dispatchWindow(actualOfficeDepartureAt);
   if (window === "CLOSED") return { status: "CLOSED", feeBaht: null };
   if (verifiedRoadDistanceMeters === null ||
       !Number.isFinite(verifiedRoadDistanceMeters) || verifiedRoadDistanceMeters < 0) {
