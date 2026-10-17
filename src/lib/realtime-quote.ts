@@ -26,8 +26,9 @@ export type RealtimePriceResult =
     };
 
 /**
- * Quote preview from the actual server instant when the customer presses
- * "เรียกช่าง". No actual payment is authorized by this calculation.
+ * Quote preview from server time when calculating the route; the final
+ * authoritative realtime request time is recorded in PostgreSQL on submit.
+ * No actual payment is authorized by this calculation.
  * Chang24 applies owner-approved rate and rounding from SERVICE_POLICY.
  */
 export function realtimeQuote(
