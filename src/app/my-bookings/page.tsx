@@ -20,6 +20,7 @@ export default function MyBookingsPage(){
  const [rows,setRows]=useState<BookingItem[]>([]);
  const [message,setMessage]=useState("กำลังตรวจสอบสิทธิ์และโหลด Booking…");
  const [busy,setBusy]=useState<string|null>(null);
+ const [filter,setFilter]=useState<"ALL"|"IMMEDIATE"|"BOOKING">("ALL");
  const load=useCallback(async()=>{
   const supabase=getSupabase();
   if(!supabase){setMessage("ระบบฐานข้อมูลยังไม่ได้รับการตั้งค่า");return;}
@@ -48,7 +49,8 @@ export default function MyBookingsPage(){
   <p className="muted">แสดงรายการเรียกช่างทันทีและจองล่วงหน้าในหน้าเดียว · ตรวจอัปเดตทุก 20 วินาที</p>
   <div className="dashboard-actions"><Link className="btn btn-gold" href="/booking">ส่งคำขอใหม่ <ArrowRight size={16}/></Link><button className="btn btn-outline" onClick={()=>void load()} type="button">รีเฟรชสถานะ</button></div>
   {message&&<p className="notice" aria-live="polite">{message} {message.includes("เข้าสู่ระบบ")&&<Link href="/login">เข้าสู่ระบบ →</Link>}</p>}
-  <div className="booking-list">{rows.map(item=><article className="card booking-card" key={item.id}>
+  <div className="request-modes" role="group" aria-label="กรองรายการจอง"><button type="button" className={filter==="ALL"?"active":""} onClick={()=>setFilter("ALL")}>ทั้งหมด</button><button type="button" className={filter==="IMMEDIATE"?"active":""} onClick={()=>setFilter("IMMEDIATE")}>เรียกทันที</button><button type="button" className={filter==="BOOKING"?"active":""} onClick={()=>setFilter("BOOKING")}>Booking ล่วงหน้า</button></div>
+  <div className="booking-list">{rows.filter(item=>filter==="ALL"||item.request_mode===filter).map(item=><article className="card booking-card" key={item.id}>
    <div className="booking-head"><div><span className="section-kicker">{item.request_mode==="IMMEDIATE"?"เรียกช่างทันที":"BOOKING ล่วงหน้า"}</span><h2>{item.category.replaceAll("_"," ")} · {item.area==="NONTHABURI"?"นนทบุรี":"กรุงเทพฯ"}</h2></div><span className={`booking-state ${item.status==="CONFIRMED"?"confirmed":""}`}>{statusLabels[item.status]??item.status}</span></div>
    <p className="muted">{item.fault_description}</p>
    {item.request_mode==="BOOKING"&&<p className="booking-date"><CalendarClock size={17}/> เวลาที่ขอ: {localDate(item.desired_start)} – {localDate(item.desired_end)}</p>}
