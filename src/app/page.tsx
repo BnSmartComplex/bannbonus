@@ -9,7 +9,7 @@ const servicePhotos: Record<string,string> = {
  AIR_CONDITIONER:"aircon-repair-800.webp",
  ELECTRICAL:"electrical-800.webp",
  PLUMBING:"plumbing-800.webp",
- REFRIGERATOR:"https://images.unsplash.com/photo-1721521999887-5d0565a4f9da?auto=format&fit=crop&crop=entropy&w=900&q=85",
+ REFRIGERATOR:"https://images.unsplash.com/photo-1588854337115-1c67d9247e4d?auto=format&fit=crop&crop=entropy&w=900&q=85",
  WASHING_MACHINE:"washing-800.webp",
  ELECTRONICS:"computer-800.webp",
  OTHER:"general-repairs-800.webp",
