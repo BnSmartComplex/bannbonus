@@ -7,6 +7,8 @@ import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { booking } from "@/lib/validation";
 import { ServiceTerms } from "@/components/service-terms";
+import { dayNeramitBusiness } from "@/lib/day-neramit-business";
+import { CustomerRoadMap, type RoadGeometry } from "@/components/customer-road-map";
 
 const categories = [
   ["OTHER", "อื่น ๆ / ไม่ทราบประเภท"],
@@ -21,12 +23,45 @@ const categories = [
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const idempotencyStorageKey = "chang24:booking-request-idempotency-key";
 
+type RoutePricing = {
+  status: "QUOTABLE" | "CLOSED" | "PRICING_NOT_APPROVED";
+  requestAt: string;
+  distanceMeters: number;
+  extraMeters: number;
+  billableExtraKilometres: number;
+  baseFeeBaht: number | null;
+  extraFeeBaht: number | null;
+  totalBaht: number | null;
+  rounding: "PRO_RATA" | "CEIL_KILOMETRE" | null;
+};
+type RouteQuote = {
+  distanceMeters: number;
+  durationMinutes: number;
+  departureAt: string;
+  estimatedArrivalAt: string;
+  pricing: RoutePricing;
+  approvedExcessRateBahtPerKm: number | null;
+  geometry: RoadGeometry;
+  roadSteps: Array<{instructionTh:string;roadName:string|null;distanceMeters:number}>;
+  provider: "OPENROUTESERVICE_OSM";
+};
+type PricePopup =
+  | { kind: "QUOTE" | "RATE_PENDING"; route: RouteQuote }
+  | { kind: "CLOSED" | "UNAVAILABLE" };
+const baht = (value: number | null) =>
+  value === null ? "ยังไม่กำหนด" : value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " บาท";
+
 type FormValues = {
   category: string;
   fault_description: string;
   brand: string;
   model_number: string;
   area: "BANGKOK" | "NONTHABURI";
+  district: "BANG_YAI" | "BANG_BUA_THONG";
+  service_address: string;
+  subdistrict: string;
+  village_group: string;
+  soi: string;
   contact_name: string;
   contact_phone: string;
   consent: boolean;
@@ -40,10 +75,8 @@ export default function BookingPage() {
     const query = new URLSearchParams(window.location.search);
     setMode(query.get("mode") === "IMMEDIATE" ? "IMMEDIATE" : "BOOKING");
     const category = query.get("category");
-    const area = query.get("area");
     setValues(current => ({...current,
       category: category && categories.some(([key]) => key === category) ? category : current.category,
-      area: area === "BANGKOK" || area === "NONTHABURI" ? area : current.area,
     }));
   }, []);
   const [values, setValues] = useState<FormValues>({
@@ -52,15 +85,52 @@ export default function BookingPage() {
     brand: "",
     model_number: "",
     area: "NONTHABURI",
+    district: "BANG_YAI",
+    service_address: "",
+    subdistrict: "",
+    village_group: "",
+    soi: "",
     contact_name: "",
     contact_phone: "",
     consent: false,
   });
   const [files, setFiles] = useState<File[]>([]);
+  const [customerCoords, setCustomerCoords] = useState<{latitude:number;longitude:number}|null>(null);
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [geoMessage, setGeoMessage] = useState("");
+  const [checkingDistance, setCheckingDistance] = useState(false);
+  const [distance, setDistance] = useState<RouteQuote | null>(null);
+  const [popup, setPopup] = useState<PricePopup | null>(null);
+  const [realtimeOpen, setRealtimeOpen] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
   const idempotencyKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const check = async () => {
+      try {
+        const response = await fetch("/api/realtime-window", {cache:"no-store"});
+        const data = await response.json();
+        if(active && response.ok && typeof data.realtimeOpen === "boolean") {
+          setRealtimeOpen(data.realtimeOpen);
+        }
+      } catch { if(active) setRealtimeOpen(null); }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 20_000);
+    const onVisible = () => { if(document.visibilityState === "visible") void check(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { active=false;window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible); };
+  }, []);
+
+  useEffect(() => {
+    if (mode === "IMMEDIATE" && realtimeOpen === false) {
+      setMode("BOOKING");
+      setPopup({kind:"CLOSED"});
+    }
+  }, [mode, realtimeOpen]);
 
   function resetIdempotencyKey() {
     idempotencyKey.current = null;
@@ -73,8 +143,192 @@ export default function BookingPage() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  async function requestRoute(destination: { latitude:number; longitude:number }) {
+    setCheckingDistance(true);
+    setDistance(null);
+    const supabase = getSupabase();
+    const { data: { session } } = supabase
+      ? await supabase.auth.getSession()
+      : { data: { session: null } };
+    if (!session) {
+      setGeoMessage("กรุณาเข้าสู่ระบบก่อนดูระยะทางตามถนน หรือดูแผนที่ OpenStreetMap ได้");
+      setCheckingDistance(false);
+      return;
+    }
+    try {
+      const response = await fetch("/api/route-distance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(destination),
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (response.ok && typeof result.distanceMeters === "number"
+          && typeof result.durationMinutes === "number") {
+        setDistance(result);
+        setGeoMessage("คำนวณเส้นทางขับรถจากสำนักงานไปหาลูกค้าแล้ว (ยังไม่ใช่การยืนยันค่าบริการ)");
+      } else {
+        setGeoMessage("ยังคำนวณระยะทางตามถนนไม่ได้ กรุณานัดหมายเพื่อให้ทีมงานตรวจสอบ");
+      }
+    } catch {
+      setGeoMessage("บริการคำนวณเส้นทางขัดข้อง กรุณาให้ทีมงานตรวจสอบ");
+    } finally {
+      setCheckingDistance(false);
+    }
+  }
+
+  function previewPinnedRoute() {
+    if (!customerCoords || !locationConfirmed) {
+      setGeoMessage("กรุณาปักหมุดบ้านบนแผนที่ แล้วติ๊กยืนยันตำแหน่งก่อนคำนวณ");
+      return;
+    }
+    void requestRoute(customerCoords);
+  }
+
+  function selectOnMap(point: {latitude:number;longitude:number}) {
+    setCustomerCoords(point);
+    setLocationConfirmed(false);
+    setDistance(null);
+    setGeoMessage("ปักหมุดแล้ว กรุณาตรวจสอบตำบล หมู่ที่ และซอยให้ตรงกับบ้าน แล้วกดยืนยันจุดหมาย");
+    resetIdempotencyKey();
+  }
+
+  function fullServiceAddress() {
+    const district=values.district==="BANG_YAI"?"บางใหญ่":"บางบัวทอง";
+    const parts=[
+      values.service_address.trim(),
+      values.soi.trim() ? `ซอย${values.soi.trim().replace(/^ซอย\s*/, "")}` : "",
+      values.village_group.trim() ? `หมู่ที่ ${values.village_group.trim()}` : "",
+      `ตำบล${values.subdistrict.trim().replace(/^ตำบล\s*/, "")}`,
+      `อำเภอ${district}`,
+      "จังหวัดนนทบุรี",
+    ];
+    return parts.filter(Boolean).join(" ");
+  }
+
+  function useMyLocation() {
+    setDistance(null);
+    setGeoMessage("");
+    setLocationConfirmed(false);
+    if (!navigator.geolocation) {
+      setGeoMessage("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง กรุณากรอกที่อยู่เพื่อให้เจ้าหน้าที่ตรวจสอบ");
+      return;
+    }
+    setCheckingDistance(true);
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+      const point = { latitude: coords.latitude, longitude: coords.longitude };
+      setCustomerCoords(point);
+      resetIdempotencyKey();
+      setGeoMessage("ได้รับพิกัดจากอุปกรณ์แล้ว โปรดยืนยันว่าตำแหน่งนี้ตรงกับบ้านที่ต้องการให้ช่างไป");
+      setCheckingDistance(false);
+    }, () => {
+      setCustomerCoords(null);
+      setGeoMessage("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณากรอกที่อยู่ให้ครบเพื่อให้เจ้าหน้าที่ตรวจสอบ");
+      setCheckingDistance(false);
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 });
+  }
+
+  function openDirections() {
+    if (!customerCoords) return;
+    const origin=dayNeramitBusiness.officeCoordinates;
+    const route=encodeURIComponent(`${origin.latitude},${origin.longitude};${customerCoords.latitude},${customerCoords.longitude}`);
+    window.open(`https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${route}`,"_blank","noopener,noreferrer");
+  }
+
+  async function showRealtimePopup() {
+    setError("");
+    if (values.service_address.trim().length < 15) {
+      setError("กรุณากรอกที่อยู่บ้านหรือจุดนัดหมายให้ครบก่อนเรียกช่าง");
+      return;
+    }
+    if (!customerCoords || !locationConfirmed) {
+      setError("กรุณาปักหมุดตำแหน่งบ้านลูกค้าและยืนยันหมุดบนแผนที่ก่อนเรียกช่างทันที");
+      return;
+    }
+    if (!values.subdistrict.trim()) {
+      setError("กรุณาระบุตำบลของบ้านลูกค้า");
+      return;
+    }
+    const supabase = getSupabase();
+    const {data:{session}} = supabase
+      ? await supabase.auth.getSession()
+      : {data:{session:null}};
+    if(!session) {
+      setError("กรุณาเข้าสู่ระบบก่อนกดเรียกช่าง");
+      return;
+    }
+    setBusy(true);
+    try {
+      const gateRes = await fetch("/api/realtime-window", {cache:"no-store"});
+      if(!gateRes.ok) throw new Error("SERVICE_CLOCK_UNAVAILABLE");
+      const gate = await gateRes.json();
+      setRealtimeOpen(Boolean(gate.realtimeOpen));
+      if(!gate.realtimeOpen) {
+        setMode("BOOKING");
+        setPopup({kind:"CLOSED"});
+        return;
+      }
+      const destination = customerCoords;
+      const routeResponse = await fetch("/api/route-distance", {
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},
+        body:JSON.stringify(destination),cache:"no-store",
+      });
+      if(!routeResponse.ok) {
+        setPopup({kind:"UNAVAILABLE"});
+        return;
+      }
+      const route = await routeResponse.json() as RouteQuote;
+      setDistance(route);
+      if(route.pricing.status === "CLOSED") {
+        setMode("BOOKING");
+        setPopup({kind:"CLOSED"});
+      } else if(route.pricing.status === "PRICING_NOT_APPROVED") {
+        setPopup({kind:"RATE_PENDING",route});
+      } else if(route.pricing.status === "QUOTABLE") {
+        setPopup({kind:"QUOTE",route});
+      } else {
+        setPopup({kind:"UNAVAILABLE"});
+      }
+    } catch {
+      setPopup({kind:"UNAVAILABLE"});
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmRealtimePopup() {
+    if(popup?.kind !== "QUOTE") return;
+    const quoted = popup.route.pricing;
+    setBusy(true);
+    try {
+      const response=await fetch("/api/realtime-window",{cache:"no-store"});
+      if(!response.ok) {setPopup({kind:"UNAVAILABLE"});return;}
+      const gate=await response.json();
+      if(!gate.realtimeOpen) {setMode("BOOKING");setPopup({kind:"CLOSED"});return;}
+      const age = Date.now()-Date.parse(quoted.requestAt);
+      if(age<0 || age>90_000 || gate.baseFeeBaht !== quoted.baseFeeBaht) {
+        setPopup(null);
+        setBusy(false);
+        await showRealtimePopup();
+        return;
+      }
+    } catch {setPopup({kind:"UNAVAILABLE"});return;}
+    finally {setBusy(false);}
+    setPopup(null);
+    await completeSubmission();
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === "IMMEDIATE") {
+      await showRealtimePopup();
+      return;
+    }
+    await completeSubmission();
+  }
+
+  async function completeSubmission() {
     setError("");
     setSuccess("");
 
@@ -103,6 +357,11 @@ export default function BookingPage() {
         throw new Error("รูปต้องเป็น JPG, PNG หรือ WebP และมีขนาดไม่เกิน 5 MB ต่อรูป");
       }
 
+      if (values.service_address.trim().length < 15 || !values.subdistrict.trim()) throw new Error("กรุณากรอกบ้านเลขที่ รายละเอียดที่อยู่ และตำบลให้ครบถ้วน");
+      if (values.village_group && !/^[1-9][0-9]?$/.test(values.village_group)) throw new Error("หมู่ที่ต้องเป็นเลขจำนวนเต็ม 1–99 หรือเว้นว่างหากไม่มีหมู่ที่");
+      const confirmedAddress=fullServiceAddress();
+      if (confirmedAddress.length > 600) throw new Error("ที่อยู่ยาวเกิน 600 ตัวอักษร กรุณาย่อรายละเอียด");
+      if (mode==="IMMEDIATE" && (!locationConfirmed || !customerCoords)) throw new Error("เรียกช่างทันทีต้องยืนยันหมุดบ้านก่อน");
       const draft = booking.safeParse({ ...values, photo_paths: files.map(() => "pending") });
       if (!draft.success) {
         throw new Error(draft.error.issues.map((issue) => issue.message).join("; "));
@@ -130,12 +389,15 @@ export default function BookingPage() {
         ?? crypto.randomUUID();
       idempotencyKey.current = requestKey;
       window.sessionStorage.setItem(idempotencyStorageKey, requestKey);
-      const { data, error: requestError } = await supabase.rpc("create_service_request", {
+      const { data, error: requestError } = await supabase.rpc("create_chang24_service_request", {
         p_category: parsed.data.category,
         p_fault_description: parsed.data.fault_description,
         p_brand: parsed.data.brand,
         p_model_number: parsed.data.model_number,
-        p_area: parsed.data.area,
+        p_district: values.district,
+        p_service_address: confirmedAddress,
+        p_latitude: locationConfirmed ? customerCoords?.latitude ?? null : null,
+        p_longitude: locationConfirmed ? customerCoords?.longitude ?? null : null,
         p_contact_name: parsed.data.contact_name,
         p_contact_phone: parsed.data.contact_phone,
         p_photo_paths: parsed.data.photo_paths,
@@ -148,9 +410,9 @@ export default function BookingPage() {
       if (requestError || !data) {
         if (requestError?.message.includes("NO_TECHNICIAN_AVAILABLE_SELECT_BOOKING") || requestError?.message.includes("OUTSIDE_IMMEDIATE_SERVICE_HOURS")) {
           setMode("BOOKING");
-          throw new Error("ขณะนี้เรียกช่างทันทีไม่ได้ กรุณาเลือกวันและเวลา Booking ล่วงหน้า");
+          throw new Error("ขณะนี้เรียกช่างเรียลไทม์ไม่ได้ กรุณาเลือกนัดหมายล่วงหน้า");
         }
-        throw new Error("บันทึกคำขอไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่");
+        throw new Error("เรียกช่างหรือนัดหมายไม่สำเร็จ กรุณาตรวจสอบที่อยู่และลองใหม่");
       }
       submitted = true;
       window.sessionStorage.removeItem(idempotencyStorageKey);
@@ -174,22 +436,23 @@ export default function BookingPage() {
   return (
     <section>
       <span className="section-kicker">DAY NERAMIT · SERVICE REQUEST</span>
-      <h1>เรียกช่างทันที / Booking ล่วงหน้า</h1>
-      <p className="muted">เรียกทันทีในช่วง 10:00–02:00 น. เมื่อช่างพร้อม · จองวันและเวลาอื่นได้ตลอด 24 ชั่วโมง</p>
+      <h1>เรียกช่าง / นัดหมายช่าง</h1>
+      <p className="muted">เรียกช่างแบบเรียลไทม์ 10:00–01:59 น. ตามเวลาไทย · 02:00–09:59 น. เลือกนัดหมาย (Booking) ได้ตลอด</p>
+      {realtimeOpen === false && <p className="notice" role="status">ขณะนี้ปิดรับเรียกช่างเรียลไทม์ กรุณาเลือกนัดหมายล่วงหน้าแทน</p>}
       <div className="request-modes" role="group" aria-label="เลือกประเภทคำขอ">
         <button type="button" className={mode === "IMMEDIATE" ? "active" : ""} onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่างทันที</button>
-        <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>Booking ล่วงหน้า 24 ชั่วโมง</button>
+        <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า</button>
       </div>
       <LiveAvailability compact category={values.category} area={values.area} onAreaChange={area=>update("area",area)} onCategoryChange={category=>update("category",category)}/>
-      <p className="notice">การส่งคำขอยังไม่ใช่การยืนยันมีช่างออกเดินทาง ทีมงานต้องตรวจสอบและช่างต้องรับงานก่อน</p>
+      <p className="notice">เมื่อกดเรียกช่างหรือนัดหมาย ทีมงานจะตรวจสอบก่อนยืนยัน ช่างยังไม่ออกเดินทางจนกว่าจะตกลงรายละเอียด</p>
       {!configured && <p className="notice" role="status">ระบบรับคำขออยู่ระหว่างเตรียมเปิดให้บริการ ยังส่งคำขอไม่ได้ในขณะนี้</p>}
       <p className="notice">
         ต้องเข้าสู่ระบบก่อน · <Link href="/login">เข้าสู่ระบบ</Link> ·
-        ทุกคำขอรอเจ้าหน้าที่ตรวจสอบก่อนยืนยันนัดหมาย
+        ทีมงานจะตรวจสอบก่อนยืนยันวันเวลา
       </p>
       <form className="card" onSubmit={submit}>
         <fieldset disabled={busy || !configured || Boolean(success)}>
-          <legend>{mode === "IMMEDIATE" ? "ข้อมูลเรียกช่างตอนนี้" : "ข้อมูล Booking ล่วงหน้า"}</legend>
+          <legend>{mode === "IMMEDIATE" ? "ข้อมูลเรียกช่างตอนนี้" : "ข้อมูลนัดหมาย"}</legend>
           {mode === "BOOKING" && <div className="schedule-grid">
             <div className="field"><label htmlFor="booking-date">วันที่ต้องการ *</label><input id="booking-date" type="date" required value={scheduleDraft.date} onChange={e=>{setScheduleDraft(v=>({...v,date:e.target.value}));resetIdempotencyKey();}}/></div>
             <div className="field"><label htmlFor="booking-start">เวลาเริ่ม *</label><input id="booking-start" type="time" required value={scheduleDraft.startTime} onChange={e=>{setScheduleDraft(v=>({...v,startTime:e.target.value}));resetIdempotencyKey();}}/></div>
@@ -215,11 +478,78 @@ export default function BookingPage() {
           <input id="model" maxLength={120} value={values.model_number} onChange={(event) => update("model_number", event.target.value)} />
         </div>
         <div className="field">
-          <label htmlFor="area">พื้นที่</label>
-          <select id="area" value={values.area} onChange={(event) => update("area", event.target.value as FormValues["area"])}>
-            <option value="NONTHABURI">นนทบุรี</option>
-            <option value="BANGKOK">กรุงเทพมหานคร</option>
+          <label htmlFor="district">อำเภอที่ต้องการให้ช่างไป *</label>
+          <select id="district" required value={values.district}
+            onChange={(event) => { update("district", event.target.value as FormValues["district"]); setDistance(null); setLocationConfirmed(false); setCustomerCoords(null); }}>
+            <option value="BANG_YAI">บางใหญ่</option>
+            <option value="BANG_BUA_THONG">บางบัวทอง</option>
           </select>
+          <small>ให้บริการหลักในบางใหญ่และบางบัวทอง หากอยู่นอกพื้นที่โปรดติดต่อทีมงานก่อน</small>
+        </div>
+        <div className="field">
+          <label htmlFor="service-address">ที่อยู่ที่ต้องการให้ช่างไป *</label>
+          <textarea id="service-address" required minLength={15} maxLength={600}
+            placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน ตำบล จุดสังเกต และรหัสไปรษณีย์"
+            value={values.service_address}
+            onChange={event => { update("service_address", event.target.value); setDistance(null); setLocationConfirmed(false); setCustomerCoords(null); }}/>
+          <small>สำนักงานช่าง: {dayNeramitBusiness.officeAddress} · <a href={dayNeramitBusiness.officeMapUrl} target="_blank" rel="noopener noreferrer">ดูตำแหน่งสำนักงาน</a></small>
+        </div>
+        <div className="field">
+          <label htmlFor="subdistrict">ตำบล *</label>
+          <input id="subdistrict" required maxLength={100} placeholder="เช่น เสาธงหิน" value={values.subdistrict}
+            onChange={e=>{update("subdistrict",e.target.value);setDistance(null);}}/>
+          <small>ระบุชื่อตำบลตามที่อยู่จริง แผนที่อาจไม่มีชื่อทุกตำบล ทีมงานจะตรวจสอบความตรงกันของตำบลและหมุด</small>
+        </div>
+        <div className="field">
+          <label htmlFor="village-group">หมู่ที่ (ถ้ามี)</label>
+          <input id="village-group" inputMode="numeric" pattern="[1-9][0-9]?" maxLength={2} placeholder="เช่น 5"
+            value={values.village_group} onChange={e=>update("village_group",e.target.value)}/>
+          <small>หมู่ที่เป็นเลขหมู่ทางปกครอง ไม่ใช่ชื่อหมู่บ้าน ถ้าไม่มีหรือไม่ทราบให้เว้นว่าง ไม่เดาเลข</small>
+        </div>
+        <div className="field">
+          <label htmlFor="soi">ชื่อซอย / ถนน (ถ้ามี)</label>
+          <input id="soi" maxLength={120} placeholder="เช่น หมู่บ้านจิตตกาญจน์วิลล่า 2"
+            value={values.soi} onChange={e=>update("soi",e.target.value)}/>
+          <small>หากชื่อซอยไม่มีใน OpenStreetMap ให้กรอกตามป้ายจริง ลูกค้ายืนยันเอง</small>
+        </div>
+        <CustomerRoadMap point={customerCoords} route={distance?.geometry??null}
+          onPick={selectOnMap} subdistrict={values.subdistrict}
+          moo={values.village_group} soi={values.soi}/>
+        <div className="card" style={{margin:"14px 0"}}>
+          <strong>ตำแหน่งบ้านและระยะทาง</strong>
+          <p className="muted">กดอนุญาตตำแหน่งจากอุปกรณ์เฉพาะเมื่อคุณอยู่ที่บ้านหรือสถานที่นัด หากไม่อยู่ที่นั่นให้กรอกที่อยู่ไว้ก่อนเพื่อให้ทีมงานตรวจสอบ</p>
+          <button className="btn btn-outline" type="button" onClick={useMyLocation} disabled={checkingDistance}>
+            {checkingDistance ? "กำลังตรวจระยะทาง…" : "ใช้ตำแหน่งปัจจุบันของฉัน"}
+          </button>
+          {customerCoords && <label style={{display:"block",marginTop:12}}>
+            <input type="checkbox" checked={locationConfirmed} onChange={event=>{
+              setLocationConfirmed(event.target.checked);
+              setDistance(null);
+              resetIdempotencyKey();
+              if(event.target.checked && customerCoords) void requestRoute(customerCoords);
+            }}/>
+            {" "}ยืนยันว่าพิกัดนี้คือสถานที่ที่จะให้ช่างไป
+          </label>}
+          <p><button className="btn btn-outline" type="button" disabled={checkingDistance || !customerCoords || !locationConfirmed}
+            onClick={previewPinnedRoute}>
+            {checkingDistance ? "กำลังคำนวณ…" : "คำนวณเส้นทางขับรถจากหมุดบ้านลูกค้า"}
+          </button></p>
+          {geoMessage && <p className="notice" role="status">{geoMessage}</p>}
+          {distance && <div className="notice" role="status">
+            <strong>สำนักงาน → บ้านลูกค้า</strong>
+            <p>ระยะทางขับรถ: {(distance.distanceMeters/1000).toFixed(2)} กม. · เวลาเดินทางประมาณ {distance.durationMinutes} นาที (ไม่ได้ใช้ข้อมูลจราจรสด)</p>
+            <p>หากออกจากสำนักงานตอน {new Date(distance.departureAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.
+             คาดว่าจะถึงประมาณ {new Date(distance.estimatedArrivalAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.</p>
+            <p>ส่วนเกิน 5 กม.: {(distance.pricing.extraMeters/1000).toFixed(2)} กม. (คิดเงิน {distance.pricing.billableExtraKilometres} กม. × {distance.approvedExcessRateBahtPerKm} บาท) · ค่าเดินทางเพิ่ม: {baht(distance.pricing.extraFeeBaht)} ·
+              ยอดรวม: <strong>{baht(distance.pricing.totalBaht)}</strong></p>
+            <small>ราคาช่วงกลางวัน/กลางคืนยึดเวลาที่ลูกค้ากดเรียกช่างและเซิร์ฟเวอร์รับรายการ ไม่ใช่เวลาเดินทางออกจากสำนักงาน</small>
+          </div>}
+          {customerCoords && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางบน OpenStreetMap</button></p>}
+          {distance?.roadSteps?.length ? <details><summary>รายละเอียดเส้นทางและชื่อถนน / ซอย</summary>
+            <ol>{distance.roadSteps.map((step,index)=><li key={index}>{step.instructionTh} {step.distanceMeters>0?`(${(step.distanceMeters/1000).toFixed(2)} กม.)`:""}</li>)}</ol>
+            <small>ข้อความเลี้ยวแสดงภาษาไทย ชื่อถนน/ซอยจากข้อมูล OpenStreetMap อาจไม่ครบ โปรดดูแผนที่ประกอบ</small>
+          </details>:null}
+          {!distance && <p className="muted">หากยังไม่แสดงระยะทางจากเส้นทางรถจริง จะยังไม่ยืนยันราคา เจ้าหน้าที่ต้องตรวจสอบก่อนออกเดินทาง</p>}
         </div>
         <div className="field">
           <label htmlFor="contact-name">ชื่อผู้ติดต่อ *</label>
@@ -236,14 +566,43 @@ export default function BookingPage() {
         </div>
         <label>
           <input type="checkbox" checked={values.consent} onChange={(event) => update("consent", event.target.checked)} />
-          {" "}ยินยอมให้ใช้ข้อมูลติดต่อและรูปภาพเพื่อดำเนินการตามคำขอนี้
+          {" "}ยินยอมให้ใช้ข้อมูลติดต่อ ที่อยู่ พิกัดตำแหน่งที่ฉันยืนยัน และรูปภาพเพื่อประสานงานกับช่าง
         </label>
-        <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : "ส่งคำขอ"}</button></p>
+        <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : mode === "IMMEDIATE" ? "เรียกช่าง" : "นัดหมายช่าง"}</button></p>
         </fieldset>
         {error && <div className="error" role="alert">{error}</div>}
-        {success && <div className="ok" role="status">รับคำขอแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูรายการจองของฉัน →</Link></p></div>}
+        {success && <div className="ok" role="status">ส่งเรื่องถึงทีมช่างแล้ว: {success}<p>สถานะ: รอทีมงานตรวจสอบ — ยังไม่ใช่การยืนยันการออกเดินทางหรือนัดหมาย <Link href="/my-bookings">ดูการเรียกช่างและนัดหมายของฉัน →</Link></p></div>}
       </form>
       <ServiceTerms />
+      {popup && <div role="presentation" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.78)",zIndex:1000,display:"grid",placeItems:"center",padding:16}}>
+        <section role="dialog" aria-modal="true" aria-labelledby="realtime-confirm-title"
+          style={{background:"#161616",color:"#fff",border:"1px solid #d7b56d",borderRadius:16,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto",padding:24,boxShadow:"0 25px 65px #000c"}}>
+          <h2 id="realtime-confirm-title">{popup.kind === "CLOSED" ? "ขณะนี้ปิดรับเรียกช่างทันที" : "ตรวจสอบค่าบริการเรียกช่าง"}</h2>
+          {popup.kind==="CLOSED" ? <p>ช่วง 02:00–09:59 น. ไม่เปิดรับเรียกช่างแบบเรียลไทม์ กรุณาเลือกวันและเวลานัดหมายแทน โดยนัดหมายล่วงหน้าได้ตลอด 24 ชั่วโมง</p>
+          : popup.kind==="UNAVAILABLE" ? <p>ยังตรวจสอบเส้นทางและค่าบริการอัตโนมัติไม่ได้ จึงไม่สามารถยืนยันยอดเรียกช่างได้ตอนนี้ กรุณาเลือกนัดหมายล่วงหน้าเพื่อให้ทีมงานตรวจสอบ</p>
+          : "route" in popup ? <>
+            <p>คำนวณจากสำนักงานไปบ้านลูกค้า ตามเส้นทางขับรถจริง</p>
+            <dl style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"8px 16px",margin:"16px 0"}}>
+              <dt>ระยะทางรวม</dt><dd>{(popup.route.distanceMeters/1000).toFixed(2)} กม.</dd>
+              <dt>ระยะเกิน 5 กม.</dt><dd>{(popup.route.pricing.extraMeters/1000).toFixed(2)} กม.</dd>
+              <dt>ระยะที่คิดเงินเพิ่ม (ปัดขึ้น)</dt><dd>{popup.route.pricing.billableExtraKilometres} กม.</dd>
+              <dt>อัตราส่วนเกิน</dt><dd>{popup.route.approvedExcessRateBahtPerKm} บาท/กม. (ปัดขึ้น)</dd>
+              <dt>ค่าออกตรวจตามเวลากดเรียก</dt><dd>{baht(popup.route.pricing.baseFeeBaht)}</dd>
+              <dt>ค่าเดินทางส่วนเพิ่ม</dt><dd>{baht(popup.route.pricing.extraFeeBaht)}</dd>
+              <dt><strong>ยอดรวม</strong></dt><dd><strong>{baht(popup.route.pricing.totalBaht)}</strong></dd>
+            </dl>
+            <p>เวลาขับรถประมาณ {popup.route.durationMinutes} นาที · เวลาเรียกที่ประเมิน {new Date(popup.route.pricing.requestAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",second:"2-digit"})} น.</p>
+            {popup.kind==="RATE_PENDING" && <p role="alert">ระยะทางเกิน 5 กม. แต่ยังไม่ได้อนุมัติอัตราคิดเงินต่อกิโลเมตรหรือการปัดเศษ จึงไม่สามารถแสดงยอดรวมที่ถูกต้องได้ กรุณานัดหมายให้ทีมงานตรวจสอบ</p>}
+            <p style={{fontSize:13,opacity:.85}}>ราคานี้เป็นยอดประมาณการที่ลูกค้าต้องตรวจสอบก่อนยืนยัน ไม่ใช่ยืนยันว่ามีช่างออกเดินทางหรือมีการเรียกเก็บเงินแล้ว</p>
+          </> : null}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:20}}>
+            {popup.kind==="QUOTE" && <button type="button" autoFocus className="btn btn-gold" disabled={busy}
+              onClick={()=>void confirmRealtimePopup()}>{busy?"กำลังตรวจสอบ…":"ยืนยันเรียกช่างตามยอดที่แสดง"}</button>}
+            <button type="button" className="btn btn-outline" onClick={()=>{setPopup(null);setMode("BOOKING");resetIdempotencyKey();}}>นัดหมายล่วงหน้า (Booking)</button>
+            <button type="button" className="btn btn-outline" onClick={()=>setPopup(null)}>ปิด</button>
+          </div>
+        </section>
+      </div>}
     </section>
   );
 }

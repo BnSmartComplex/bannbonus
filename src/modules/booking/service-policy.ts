@@ -1,11 +1,13 @@
 /**
  * Owner-confirmed policy, 2026-10-17 (supersedes PR #6's 22:00 boundary).
  * Pure reference calculations only; no booking, assignment or billing writes.
- * A future server command must load tenant policy and verified road routing from
- * trusted sources, then persist the disclosed fee and customer approval.
+ * Local Chang24 owner update: office -> customer, not technician base -> customer.
+ * Owner update 2026-10-18: CHANG24 realtime base fee is determined by the
+ * authenticated request's SERVER-RECEIVED CLICK TIME, not technician departure.
+ * Route and any extra-distance charge still require verified road travel and consent.
  */
 export const SERVICE_POLICY = {
-  version: "2026-10-17-21h",
+  version: "2026-10-18-approved-overage-10-ceil",
   timeZone: "Asia/Bangkok",
   dispatchHours: "10:00–02:00",
   ordinaryHours: "10:00–20:59",
@@ -14,7 +16,7 @@ export const SERVICE_POLICY = {
   ordinaryFeeBaht: 299,
   nightFeeBaht: 499,
   completedRepairLaborDiscountBaht: 100,
-  extraDistance: { status: "PENDING_OWNER_APPROVAL", proposedBahtPerKm: 10 },
+  extraDistance: { status: "OWNER_APPROVED", bahtPerKm: 10, rounding: "CEIL_KILOMETRE" },
 } as const;
 
 export type DispatchWindow = "ORDINARY" | "NIGHT" | "CLOSED";
@@ -23,7 +25,7 @@ const bangkokClock = new Intl.DateTimeFormat("en-GB", {
   timeZone: SERVICE_POLICY.timeZone, hour: "2-digit", hourCycle: "h23",
 });
 
-/** Only NEW immediate dispatch is subject to this clock, never existing jobs or free requests. */
+/** This clock gates NEW REALTIME REQUESTS, not existing work or 24/7 advance booking. */
 export function dispatchWindow(instant: Date): DispatchWindow {
   if (!Number.isFinite(instant.getTime())) throw new Error("INVALID_DISPATCH_INSTANT");
   const hour = Number(bangkokClock.format(instant));
@@ -37,15 +39,15 @@ type CalloutEstimate =
   | { status: "ESTIMATE"; feeBaht: number };
 
 /**
- * Distance must be a verified road route from the assigned contractor's base,
+ * Distance must be a verified road route from the Chang24 office,
  * not customer input or straight-line distance. null means not yet verified.
  * Never round an excess distance into the included range. This is NOT a quote,
  * permission to dispatch, or authorization to collect money.
  */
 export function estimateCallout(
-  confirmedDispatchAt: Date, verifiedRoadDistanceMeters: number | null,
+  realtimeRequestReceivedAt: Date, verifiedRoadDistanceMeters: number | null,
 ): CalloutEstimate {
-  const window = dispatchWindow(confirmedDispatchAt);
+  const window = dispatchWindow(realtimeRequestReceivedAt);
   if (window === "CLOSED") return { status: "CLOSED", feeBaht: null };
   if (verifiedRoadDistanceMeters === null ||
       !Number.isFinite(verifiedRoadDistanceMeters) || verifiedRoadDistanceMeters < 0) {

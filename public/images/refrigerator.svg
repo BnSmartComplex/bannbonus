@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+<title id="title">ตู้เย็นสองประตูในห้องครัว</title><desc id="desc">ภาพวาดเวกเตอร์ตู้เย็นสีเงินสองประตูในห้องครัวสมัยใหม่</desc>
+<defs>
+<linearGradient id="wall" x2="0" y2="1"><stop stop-color="#a6a59d"/><stop offset="1" stop-color="#e6ddcf"/></linearGradient>
+<linearGradient id="floor" x2="0" y2="1"><stop stop-color="#8b7863"/><stop offset="1" stop-color="#4c3e31"/></linearGradient>
+<linearGradient id="body"><stop stop-color="#a3a8a7"/><stop offset=".2" stop-color="#f4f6f3"/><stop offset=".56" stop-color="#c7cfce"/><stop offset=".84" stop-color="#eff2ee"/><stop offset="1" stop-color="#8c9391"/></linearGradient>
+<linearGradient id="door"><stop stop-color="#b8bdbc"/><stop offset=".17" stop-color="#e9eeeb"/><stop offset=".65" stop-color="#d0d8d5"/><stop offset="1" stop-color="#aeb9b6"/></linearGradient>
+<linearGradient id="shadow" x2="1" y2="1"><stop stop-color="#080908" stop-opacity=".5"/><stop offset="1" stop-color="#080908" stop-opacity="0"/></linearGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="24"/></filter>
+<filter id="small"><feDropShadow dx="12" dy="19" stdDeviation="14" flood-color="#20221e" flood-opacity=".3"/></filter>
+</defs>
+<rect width="1200" height="800" fill="url(#wall)"/>
+<rect x="0" y="0" width="1200" height="116" fill="#8b765f"/>
+<rect x="0" y="116" width="1200" height="8" fill="#574637"/>
+<path d="M0 605h1200v195H0z" fill="url(#floor)"/>
+<path d="M0 605h1200" stroke="#eee2cd" stroke-width="10"/>
+<path d="M0 704h1200M0 788h1200M260 605l-68 195M815 605l64 195" stroke="#bba98f" stroke-opacity=".3" stroke-width="3"/>
+<rect x="52" y="254" width="284" height="351" rx="10" fill="#907761"/>
+<rect x="66" y="268" width="254" height="304" rx="5" fill="#b4a088"/>
+<path d="M195 270v302" stroke="#695948" stroke-width="6"/>
+<rect x="164" y="386" width="7" height="75" rx="3" fill="#776c5e"/>
+<rect x="215" y="386" width="7" height="75" rx="3" fill="#776c5e"/>
+<rect x="37" y="221" width="320" height="31" rx="4" fill="#454944"/>
+<rect x="18" y="204" width="356" height="17" rx="3" fill="#9d927f"/>
+<rect x="835" y="252" width="365" height="350" rx="6" fill="#aa927b"/>
+<rect x="850" y="268" width="335" height="98" rx="2" fill="#f1ece3"/>
+<rect x="850" y="382" width="335" height="185" rx="2" fill="#c6af97"/>
+<path d="M970 384v183M1081 384v183" stroke="#9a846b" stroke-width="5"/>
+<rect x="833" y="218" width="367" height="30" fill="#54544c"/>
+<rect x="872" y="161" width="102" height="51" rx="5" fill="#48503f"/>
+<path d="M902 168c-7-21-8-23-5-40m18 39c20-27 22-32 28-49" stroke="#516d40" stroke-width="13" stroke-linecap="round"/>
+<path d="M910 160c-30-34-35-40-34-64m55 66c35-27 46-38 55-62" stroke="#627f50" stroke-width="12" stroke-linecap="round"/>
+<ellipse cx="626" cy="645" rx="220" ry="44" fill="#11140e" opacity=".26" filter="url(#blur)"/>
+<g filter="url(#small)">
+<rect x="384" y="116" width="480" height="515" rx="25" fill="#8b9492"/>
+<rect x="397" y="125" width="454" height="493" rx="23" fill="url(#body)" stroke="#747f7e" stroke-width="4"/>
+<rect x="411" y="140" width="423" height="202" rx="12" fill="url(#door)" stroke="#f6f7f4" stroke-width="3"/>
+<path d="M410 350h427" stroke="#7b8583" stroke-width="11"/>
+<rect x="411" y="361" width="423" height="245" rx="11" fill="url(#door)" stroke="#f7f8f6" stroke-width="3"/>
+<rect x="437" y="199" width="15" height="109" rx="7" fill="#687171" stroke="#e4e7e3" stroke-width="3"/>
+<rect x="437" y="396" width="15" height="131" rx="7" fill="#687171" stroke="#e4e7e3" stroke-width="3"/>
+<rect x="506" y="153" width="226" height="8" rx="4" fill="#fff" opacity=".26"/>
+<rect x="506" y="376" width="226" height="8" rx="4" fill="#fff" opacity=".25"/>
+<rect x="435" y="617" width="36" height="16" rx="2" fill="#333835"/>
+<rect x="778" y="617" width="36" height="16" rx="2" fill="#333835"/>
+</g>
+<path d="M398 632h460" stroke="#3f3830" stroke-width="6" opacity=".22"/>
+</svg>

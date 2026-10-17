@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { getSupabase } from "@/lib/supabase";
 
 export default function LoginPage() {
+  const staffPortal = process.env.NEXT_PUBLIC_APP_PORTAL === "STAFF";
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,8 +23,8 @@ export default function LoginPage() {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/booking`,
+          shouldCreateUser: !staffPortal,
+          emailRedirectTo: `${window.location.origin}${staffPortal ? "/" : "/booking"}`,
         },
       });
       setMessage(otpError
@@ -38,7 +39,8 @@ export default function LoginPage() {
 
   return (
     <section>
-      <h1>เข้าสู่ระบบ</h1>
+      <h1>{staffPortal ? "เข้าสู่ระบบช่างและ Admin" : "เข้าสู่ระบบลูกค้า"}</h1>
+      {staffPortal && <p className="notice">ใช้บัญชีทีมงานที่ได้รับสิทธิ์จากผู้ดูแลระบบเท่านั้น · หน้าเข้าสู่ระบบนี้ไม่สร้างบัญชีใหม่</p>}
       <form className="card" onSubmit={submit}>
         <div className="field">
           <label htmlFor="email">อีเมล</label>

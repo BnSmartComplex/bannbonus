@@ -4,9 +4,13 @@ import Link from "next/link";
 import { Clock3, CalendarCheck2, Send, RefreshCw } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { validateSchedule, type ScheduleDraft } from "@/lib/schedule";
+import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 
 type Booking={
  id:string;tenant_id:string;category:string;area:string;status:string;created_at:string;
+ service_district:"BANG_YAI"|"BANG_BUA_THONG"|null;service_address:string|null;
+ service_latitude:number|null;service_longitude:number|null;
+ address_verification_status:string|null;road_distance_meters:number|null;
  request_mode:"IMMEDIATE"|"BOOKING";desired_start:string|null;desired_end:string|null;
  alternative_start:string|null;alternative_end:string|null;alternative_technician_id:string|null;
  alternative_status:"NONE"|"PENDING_CUSTOMER"|"CUSTOMER_ACCEPTED"|"CUSTOMER_REJECTED";
@@ -37,7 +41,7 @@ export default function OperatorBookingsPage(){
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){setMessage("ต้องเข้าสู่ระบบเจ้าหน้าที่ก่อน");return;}
   const {data,error}=await supabase.from("booking_requests")
-   .select("id,tenant_id,category,area,status,created_at,request_mode,desired_start,desired_end,alternative_start,alternative_end,alternative_technician_id,alternative_status")
+   .select("id,tenant_id,category,area,status,created_at,request_mode,desired_start,desired_end,alternative_start,alternative_end,alternative_technician_id,alternative_status,service_district,service_address,service_latitude,service_longitude,address_verification_status,road_distance_meters")
    .eq("status","PENDING_TEAM_REVIEW").order("created_at",{ascending:true});
   if(error){setMessage("โหลดรายการคำขอไม่สำเร็จหรือไม่มีสิทธิ์: "+error.message);return;}
   const rows=(data??[]) as Booking[];
@@ -102,7 +106,19 @@ export default function OperatorBookingsPage(){
    const mayApprove=item.request_mode==="IMMEDIATE"||customerAccepted||item.alternative_status==="NONE";
    return <article className="card booking-card" key={item.id}>
     <div className="booking-head"><div><span className="section-kicker">{item.request_mode==="IMMEDIATE"?"เรียกช่างทันที":"Booking ล่วงหน้า"}</span><h2>{item.category} · {item.area==="NONTHABURI"?"นนทบุรี":"กรุงเทพฯ"}</h2></div><span className="booking-state">{label(item.alternative_status)}</span></div>
-    <small className="muted">เลขคำขอ {item.id}</small>
+    <small className="muted">งานเลขที่ {item.id}</small>
+    <p><strong>จุดเริ่มต้น: สำนักงาน</strong> {dayNeramitBusiness.officeAddress}</p>
+    <p><strong>บ้านลูกค้า:</strong> {item.service_address ?? "ยังไม่มีที่อยู่ (งานเดิม ต้องตรวจสอบ)"} · {
+      item.service_district==="BANG_YAI"?"บางใหญ่":item.service_district==="BANG_BUA_THONG"?"บางบัวทอง":"ยังไม่ยืนยันอำเภอ"
+    }</p>
+    {item.service_address&&<p><a className="btn btn-outline" target="_blank" rel="noopener noreferrer"
+      href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(dayNeramitBusiness.officeAddress)}&destination=${encodeURIComponent(item.service_latitude!==null&&item.service_longitude!==null?`${item.service_latitude},${item.service_longitude}`:item.service_address)}&travelmode=driving`}>
+      ดูเส้นทางสำนักงาน → ลูกค้า บน Google Maps
+    </a></p>}
+    <p className="notice">{item.road_distance_meters===null
+      ? "ยังไม่มีการยืนยันระยะทางขับรถจริง ต้องตรวจสอบก่อนเสนอค่าบริการและก่อนช่างออกเดินทาง"
+      : `ระยะทางที่บันทึกในระบบ ${(item.road_distance_meters/1000).toFixed(2)} กม. (ตรวจสอบผู้ให้บริการและจุดต้นทางก่อนใช้)`}
+      {" "}ราคาอ้างอิงตามเวลาออกเดินทางจริงจากสำนักงาน ไม่ใช่เวลาเริ่มงานที่บ้าน</p>
     {item.request_mode==="BOOKING"&&<p><Clock3 size={17}/> เวลาที่ลูกค้าเลือก: {item.desired_start?new Date(item.desired_start).toLocaleString("th-TH",{timeZone:"Asia/Bangkok"}):"ไม่ระบุ"}</p>}
     {item.alternative_start&&<p className="notice">เวลาใหม่ที่เสนอ: {new Date(item.alternative_start).toLocaleString("th-TH",{timeZone:"Asia/Bangkok"})} · {label(item.alternative_status)}</p>}
     <div className="operator-fields">
