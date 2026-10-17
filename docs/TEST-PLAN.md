@@ -44,3 +44,14 @@ Each test needs actual implementation evidence and pass/fail record. Focused exe
 
 - CI and Vercel Preview must be checked against the new commit SHA; baseline `1852af2` results do not transfer to this change.
 - No production deploy, persistent production migration, or billing activation is part of this PR.
+
+### Executed database verification (2026-10-17)
+
+- Read commit 9bbbcb2 through the GitHub connector despite shell checkout restrictions.
+- Executed its migration 0002 and SQL suite on the isolated chang24-test PostgreSQL 17.11 project inside one BEGIN/ROLLBACK session.
+- The original suite planned 42 but executed 41 assertions. Its cancellation assertion also attempted to read a customer booking as a technician; self/role-scoped RLS correctly hid that row.
+- Fixed only the test: verify cancellation with the authorized tenant operator, resume technician checks, and add customer directory-access denial. No application permissions or business state transitions changed.
+- Corrected suite: 42 assertions executed, 42 passed, no plan mismatch.
+- Database-role/JWT-subject checks exercise PostgreSQL RPC/RLS, not GoTrue authentication, HTTP JWT validation or Storage HTTP behavior.
+- All migration, extension and fixture changes were rolled back; no permanent migration was applied.
+- Real Auth/Storage HTTP and two-session concurrency remain unexecuted. The concurrency script's existence is not execution evidence.

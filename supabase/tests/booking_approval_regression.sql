@@ -77,6 +77,11 @@ select throws_ok(
 
 select set_config('request.jwt.claim.sub', pg_temp.test_id('customer')::text, true);
 select throws_ok(
+  $q$select * from public.list_tenant_technicians(pg_temp.test_id('tenant_a'))$q$,
+  'P0001', 'STAFF_DIRECTORY_FORBIDDEN', 'customer cannot read technician directory'
+);
+
+select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_a'), pg_temp.test_id('technician'),
     '2026-10-17T10:00+07', '2026-10-17T11:00+07'
@@ -261,11 +266,15 @@ select lives_ok(
     pg_temp.test_id('appointment_a'), 'CANCELLED')$q$,
   'technician cancellation succeeds'
 );
+-- Technicians intentionally cannot SELECT customer booking rows. Verify the
+-- reconciled state as the tenant operator, then resume technician checks.
+select set_config('request.jwt.claim.sub', pg_temp.test_id('operator')::text, true);
 select is(
   (select status from public.booking_requests where id = pg_temp.test_id('booking_a')),
   'CANCELLED',
   'cancellation reconciles booking state'
 );
+select set_config('request.jwt.claim.sub', pg_temp.test_id('technician')::text, true);
 select lives_ok(
   $q$select public.technician_update_appointment_status(
     pg_temp.test_id('appointment_a'), 'CANCELLED')$q$,
