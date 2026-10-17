@@ -46,10 +46,10 @@ export default function MyBookingsPage(){
  return <section className="booking-dashboard">
   <span className="section-kicker">MY SERVICE REQUESTS</span>
   <h1>รายการเรียกช่างและนัดหมาย</h1>
-  <p className="muted">แสดงรายการเรียกช่างทันทีและจองล่วงหน้าในหน้าเดียว · ตรวจอัปเดตทุก 20 วินาที</p>
-  <div className="dashboard-actions"><Link className="btn btn-gold" href="/booking">เรียกช่างหรือนัดหมาย <ArrowRight size={16}/></Link><button className="btn btn-outline" onClick={()=>void load()} type="button">รีเฟรชสถานะ</button></div>
+  <p className="muted">รายการเรียกช่างและนัดหมายของคุณ · ตรวจอัปเดตทุก 20 วินาที</p>
+  <div className="dashboard-actions"><Link className="btn btn-gold" href="/booking">เรียกช่าง <ArrowRight size={16}/></Link><button className="btn btn-outline" onClick={()=>void load()} type="button">รีเฟรชสถานะ</button></div>
   {message&&<p className="notice" aria-live="polite">{message} {message.includes("เข้าสู่ระบบ")&&<Link href="/login">เข้าสู่ระบบ →</Link>}</p>}
-  <div className="request-modes" role="group" aria-label="กรองรายการจอง"><button type="button" className={filter==="ALL"?"active":""} onClick={()=>setFilter("ALL")}>ทั้งหมด</button><button type="button" className={filter==="IMMEDIATE"?"active":""} onClick={()=>setFilter("IMMEDIATE")}>เรียกทันที</button><button type="button" className={filter==="BOOKING"?"active":""} onClick={()=>setFilter("BOOKING")}>นัดหมายล่วงหน้า</button></div>
+  <div className="request-modes" role="group" aria-label="กรองงาน"><button type="button" className={filter==="ALL"?"active":""} onClick={()=>setFilter("ALL")}>ทั้งหมด</button><button type="button" className={filter==="IMMEDIATE"?"active":""} onClick={()=>setFilter("IMMEDIATE")}>เรียกทันที</button><button type="button" className={filter==="BOOKING"?"active":""} onClick={()=>setFilter("BOOKING")}>นัดหมายล่วงหน้า</button></div>
   <div className="booking-list">{rows.filter(item=>filter==="ALL"||item.request_mode===filter).map(item=><article className="card booking-card" key={item.id}>
    <div className="booking-head"><div><span className="section-kicker">{item.request_mode==="IMMEDIATE"?"เรียกช่างทันที":"นัดหมายล่วงหน้า"}</span><h2>{item.category.replaceAll("_"," ")} · {item.area==="NONTHABURI"?"นนทบุรี":"กรุงเทพฯ"}</h2></div><span className={`booking-state ${item.status==="CONFIRMED"?"confirmed":""}`}>{statusLabels[item.status]??item.status}</span></div>
    <p className="muted">{item.fault_description}</p>
