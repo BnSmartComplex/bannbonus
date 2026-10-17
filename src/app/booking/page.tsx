@@ -27,6 +27,7 @@ type RoutePricing = {
   requestAt: string;
   distanceMeters: number;
   extraMeters: number;
+  billableExtraKilometres: number;
   baseFeeBaht: number | null;
   extraFeeBaht: number | null;
   totalBaht: number | null;
@@ -482,7 +483,7 @@ export default function BookingPage() {
             <p>ระยะทางขับรถ: {(distance.distanceMeters/1000).toFixed(2)} กม. · เวลาเดินทางประมาณ {distance.durationMinutes} นาที</p>
             <p>หากออกจากสำนักงานตอน {new Date(distance.departureAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.
              คาดว่าจะถึงประมาณ {new Date(distance.estimatedArrivalAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.</p>
-            <p>ส่วนเกิน 5 กม.: {(distance.pricing.extraMeters/1000).toFixed(2)} กม. · ค่าเดินทางเพิ่ม: {baht(distance.pricing.extraFeeBaht)} ·
+            <p>ส่วนเกิน 5 กม.: {(distance.pricing.extraMeters/1000).toFixed(2)} กม. (คิดเงิน {distance.pricing.billableExtraKilometres} กม. × 10 บาท) · ค่าเดินทางเพิ่ม: {baht(distance.pricing.extraFeeBaht)} ·
               ยอดรวม: <strong>{baht(distance.pricing.totalBaht)}</strong></p>
             <small>ราคาช่วงกลางวัน/กลางคืนยึดเวลาที่ลูกค้ากดเรียกช่างและเซิร์ฟเวอร์รับรายการ ไม่ใช่เวลาเดินทางออกจากสำนักงาน</small>
           </div>}
@@ -523,6 +524,8 @@ export default function BookingPage() {
             <dl style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"8px 16px",margin:"16px 0"}}>
               <dt>ระยะทางรวม</dt><dd>{(popup.route.distanceMeters/1000).toFixed(2)} กม.</dd>
               <dt>ระยะเกิน 5 กม.</dt><dd>{(popup.route.pricing.extraMeters/1000).toFixed(2)} กม.</dd>
+              <dt>ระยะที่คิดเงินเพิ่ม (ปัดขึ้น)</dt><dd>{popup.route.pricing.billableExtraKilometres} กม.</dd>
+              <dt>อัตราส่วนเกิน</dt><dd>10 บาท/กม.</dd>
               <dt>ค่าออกตรวจตามเวลากดเรียก</dt><dd>{baht(popup.route.pricing.baseFeeBaht)}</dd>
               <dt>ค่าเดินทางส่วนเพิ่ม</dt><dd>{baht(popup.route.pricing.extraFeeBaht)}</dd>
               <dt><strong>ยอดรวม</strong></dt><dd><strong>{baht(popup.route.pricing.totalBaht)}</strong></dd>
