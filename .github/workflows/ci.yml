@@ -13,10 +13,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: corepack enable
-      - run: npm install --package-lock-only --ignore-scripts
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test -- --passWithNoTests
-      - run: npm run build
+          cache: npm
+      - name: Install frozen dependencies
+        run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test -- --passWithNoTests
+      - name: Production build
+        run: npm run build

@@ -1,8 +1,8 @@
 # GOLD — ช่างออนไลน์ 24 ชั่วโมง / BannBonus BNSmart
-Version: 1.0.0 | Status: APPROVED REQUIREMENTS / PRE-IMPLEMENTATION | Date: 2026-10-15
+Version: 1.3.0-draft | Status: OWNER-CONFIRMED POLICY / PRE-IMPLEMENTATION / PR REVIEW | Date: 2026-10-16
 Repository: BnSmartComplex/bannbonus | Canonical business and system specification.
 ## Mission and boundaries
-Build a trustworthy mobile-first field-service SaaS platform for a **real team of three**. Customers may request service or make booking requests 24/7; **24 hours does not promise technician availability**. Initial coverage: **Bangkok and Nonthaburi only** (exact zones and pricing to be configured; never infer them). Existing LINE Official Account and LINE team group are confirmed; credentials, bot installation and API integration are NOT confirmed.
+Build a trustworthy mobile-first field-service SaaS platform coordinating **independent multi-trade contractors**. Customers may submit free advance booking requests 24/7; new immediate dispatch operates daily **10:00–02:00 Asia/Bangkok** and still requires verified availability. Initial coverage: **Bangkok and Nonthaburi only** (exact zones and pricing to be configured; never infer them). Existing LINE Official Account and LINE team group are confirmed; credentials, bot installation and API integration are NOT confirmed.
 Booking policy: **human team approval is mandatory** before a booking is confirmed. No shift/roster/check-in-to-shift system. Technicians explicitly toggle ONLINE/OFFLINE, while operational states derive from jobs.
 ## Non-negotiable invariants
 1. Source of truth is backend database; LINE, web, PWA and agents are clients. No UI/AI-only state mutation.
@@ -14,7 +14,7 @@ Booking policy: **human team approval is mandatory** before a booking is confirm
 7. All write commands are authorized, validated, idempotent and audited; high-impact AI actions require explicit human confirmation.
 8. LINE group receives minimal PII, signed webhook verification, retry and outbox. Do not use discontinued LINE Notify. Missing credentials means NOT CONNECTED, never claim integration is live.
 9. BN Tactical is decision support, not independent safety authority; cite approved manuals/evidence, record measurements as technician-supplied, escalate electrical/gas/other hazardous work and uncertainty. No fabricated prices, availability, test results, warranties.
-10. Separate tenant_id in business data and enforce tenant isolation from day one; single operating tenant initially. Keep system lean for three users.
+10. Separate tenant_id in business data and enforce tenant isolation from day one; single operating tenant initially. Keep the initial single-tenant deployment lean without assuming a fixed contractor headcount.
 11. PDPA/privacy-by-design, least privilege, consent for case-study content, encryption, retention and deletion workflows, backups and tested restoration.
 12. GitHub changes through scoped branches/PRs and review; GOLD and state machine contract changes require human approval.
 ## User journeys
@@ -30,7 +30,7 @@ P4: analytics, knowledge governance, reviewed SEO/case studies and automation.
 ## Acceptance gates
 Never announce available technician while active job or unchecked-out; concurrent accepts cannot assign twice; simultaneous bookings cannot overlap; booking is never confirmed without authorized staff action; webhook replay has no duplicate effects; failed LINE push remains visible and retryable; offline stale state cannot authorize accept; tenant isolation tested; recovery procedure tested.
 ## Open decisions (do not guess)
-Service categories and qualifications, exact zones, travel buffers, quote/pricing rules, customer identity and payment provider, LINE credentials/group ID, tech identities, booking cancellation policy, operating hours of actual human response, chosen hosting stack. Defaults must be documented as provisional and configurable.
+Service categories and qualifications, exact zones, travel buffers, additional-distance rounding (proposed +THB 10/km), payment collection/provider, platform commission, customer identity, LINE credentials/group ID, tech identities, booking cancellation/refund policy, chosen hosting stack. Daily new-dispatch hours and first-5km base pricing are owner-confirmed below; actual staffing/technician availability must still be verified. Defaults must be documented as provisional and configurable.
 ## Document precedence
 GOLD.md > docs/STATE-MACHINES.md and docs/API-CONTRACTS.md > docs/ARCHITECTURE.md > AGENTS.md > implementation. In conflict, stop and propose an ADR; never silently change GOLD.
 
@@ -53,3 +53,16 @@ Research all four dossier categories internally from booking time. Customer-faci
 
 ## Confirmed: customer-facing visual device comparison
 At booking, fetch a legitimately reusable reference product image for each plausible candidate model (OEM/manufacturer preferred) and show it alongside any customer-uploaded equipment image. Display brand/model, source, and whether the image is exact-model verified or illustrative only. Let customer respond CONFIRMED/UNSURE/UNKNOWN/REJECTED; continue research regardless. Never claim that visual similarity alone verifies exact model/revision. If no trusted/licensed reference image is available, show a clear no-reference state rather than unrelated stock imagery. Secure customer photos and strip metadata as appropriate; enforce access controls, licensing and image-source attribution. Public display must not reveal internal diagnostic hypotheses.
+
+## Owner-confirmed independent-contractor and dispatch policy (2026-10-16; draft PR, not deployed)
+- BannBonus is a coordination marketplace for **independent multi-trade contractors**, not a salaried-technician employer. No platform-mandated standardized labor or material prices. The assigned contractor quotes labor and materials on site; customer explicitly approves the quote and any scope changes before work begins.
+- **Asia/Bangkok operating hours for new immediate dispatch: 10:00–02:00 the following day, every day.** At 02:00:00 new immediate dispatch is closed; previously accepted jobs may continue. Online advance booking requests can be submitted outside dispatch hours but remain unconfirmed until human staff approval. No 24-hour technician-availability guarantee.
+- **Call-out/travel/initial inspection fee for first 5 km:** THB **299** if customer confirms dispatch during **10:00:00–20:59:59**; THB **499 starting rate** during **21:00:00–01:59:59**. Pricing clock is customer-confirmed dispatch time, not technician arrival time. Customer must see and approve fees before departure. No dispatch fee if no eligible technician is assigned/dispatched.
+- Distance is based on **actual road route from the assigned contractor's verified office/dispatch base to the customer**, not straight-line distance. Beyond 5 km **+THB 10/km is a proposal, NOT yet approved for live billing**; rounding, route provider and price disclosure require approval. Owner-supplied office map reference for ช่างเดย์เนรมิตร: https://maps.app.goo.gl/TNuQPQP3QARkbR946 (public Maps resolves to Day Neramit at 2/473, Soi Mu Ban Chittakan Villa 2, Sao Thong Hin, Bang Yai, Nonthaburi 11140; owner-session identity and routing coordinates still require verification). Independent contractors may have different verified bases.
+- **Advance booking requests are free**, distinct from the paid dispatch/inspection fee. Booking confirmation requires human operator approval. If customer declines an on-site repair quote, only the previously approved call-out/inspection charge applies, subject to any separately approved cancellation/refund terms.
+- After customer approves repair and job is completed, discount **THB 100 against labor**, capped at the actual labor charge; never refund/offset the entire dispatch fee or discount parts. Display itemized dispatch, distance, approved labor, materials, discount and final total; do not perform unapproved work.
+- Backend-authoritative pricing, timezone and midnight-boundary tests, quote-version approval, tenant/RLS, idempotent dispatch and audit records are required before enabling financial workflows. Google Business Profile hours for ช่างเดย์เนรมิตร should be 10:00–02:00 daily but **have not been edited**. Do not change the external listing without owner authentication and verified profile access.
+- This policy is owner-confirmed, but code/database/production updates still require reviewed PR and tests per AGENTS.md.
+
+## Latest instruction reconciliation (2026-10-17)
+The owner explicitly reconfirmed 21:00 in the current request, superseding PR #6's 22:00 policy. Ordinary pricing ends at 20:59:59; night pricing starts at 21:00. See docs/DECISIONS/0003-night-boundary.md. No production billing is enabled.
