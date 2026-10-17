@@ -2,6 +2,13 @@
 **Status:** Chang24 owner-directed change, pending final operational acceptance. **Date:** 2026-10-18
 **Applies ONLY to:** ช่าง24 / Day Neramit local tenant. General BannBonus contractor-dispatch rules remain unchanged.
 
+## OWNER OVERRIDE — 2026-10-18 (this section supersedes earlier departure-fee text)
+- **Realtime 10:00–20:59 = 299 THB base (first 5 km); 21:00–01:59 = 499 THB base; 02:00–09:59 = no realtime request; offer Booking.**
+- **Tariff tier is locked to when the customer finally clicks to submit the realtime call and the server receives it**, not when the technician leaves the office, reaches the destination or is assigned. SQL migration 0009 captures `realtime_clicked_at` and `realtime_base_fee_baht` using database transaction time, not device time.
+- Office remains the ONLY route origin; calculate actual driving road km, estimated travel minutes, and excess km `max(0,totalKm-5)`. Extra charge and combined total must appear in a customer popup BEFORE final call submission. Extra charge depends on an owner-approved THB/km tariff AND owner-approved treatment of fractional kilometres. Neither was approved in this conversation. **Do not silently activate the old proposed +10 THB/km.**
+- If route cannot be verified or extra tariff is unset, never display a fabricated total; the popup must explain and offer Booking for human review.
+- Current popup amount is a preview, and accepted customer charge is NOT yet persisted as a verified final route-price contract. A verified route snapshot and operator/client approved final-charge lifecycle remain necessary before production billing.
+
 ## Decision
 1. The user-provided office Google Maps pin at https://maps.app.goo.gl/pY1ei9UqgVJrqxV76 identifies **Day Neramit office**. The address is 2/473 Chittakan Villa 2, Sao Thong Hin, Bang Yai, Nonthaburi 11140. An independently verified Google Maps Place ID has not yet been supplied; do not invent one or use map viewport coordinates.
 2. Calculate driving **road distance and travel duration from the office TO the customer's confirmed location**. Use an actual routing provider. Never reverse the route, replace it with a straight line, or use the technician's home as origin for Chang24. Routes API supports an office address or explicitly verified Place ID as origin; customer GPS (with consent) or typed destination address is the endpoint. Address geocoding and actual district eligibility remain subject to staff review.
