@@ -5,6 +5,7 @@ import { PwaRegistration } from "@/components/pwa-registration";
 import { Phone, ArrowUpRight } from "lucide-react";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 import { portalMode } from "@/lib/portal-mode";
+import { StaffRoleGate } from "@/components/staff-role-gate";
 import "./globals.css";
 
 const staff = portalMode() === "STAFF";
@@ -50,7 +51,7 @@ export default function RootLayout({children}: Readonly<{children:React.ReactNod
         <div className="header-actions"><a className="phone-link" href="tel:0924367468"><Phone size={16}/> 092-436-7468</a><AuthControls/><Link className="btn btn-gold header-cta" href="/booking">เรียกช่าง <ArrowUpRight size={16}/></Link></div>
       </nav></div></header>
     </>}
-    <main className="site-main shell">{children}</main>
+    <main className="site-main shell">{staff ? <StaffRoleGate>{children}</StaffRoleGate> : children}</main>
     {staff ? <footer className="site-footer">
       <div className="shell footer-grid">
         <div className="footer-brand"><strong>BannBonus · Team Operations</strong><p>สำหรับช่างและ Admin เท่านั้น</p></div>
