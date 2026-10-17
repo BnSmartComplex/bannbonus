@@ -66,3 +66,10 @@ At booking, fetch a legitimately reusable reference product image for each plaus
 
 ## Latest instruction reconciliation (2026-10-17)
 The owner explicitly reconfirmed 21:00 in the current request, superseding PR #6's 22:00 policy. Ordinary pricing ends at 20:59:59; night pricing starts at 21:00. See docs/DECISIONS/0003-night-boundary.md. No production billing is enabled.
+
+
+## Owner-confirmed service UX refinement (2026-10-17)
+- Customer-facing Day Neramit dark-and-gold website with service discovery and real-time technician-status indicators; BannBonus/BNSmart remains platform identity.
+- Immediate requests: 10:00–02:00 Thailand time, gated by current backend online, freshness, visits, jobs, skill and area. Operator and technician still approve/accept; no automatic dispatch promises.
+- Booking requests may be submitted any time, 24/7. The requested service start remains subject to the 10:00–02:00 service window.
+- Staff-proposed alternative dates are displayed to the booking customer; explicit customer acceptance is required before authorized staff confirms the alternative. Staff must recheck conflicts before confirmation. See docs/DECISIONS/0004-realtime-booking.md.
