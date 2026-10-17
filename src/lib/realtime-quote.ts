@@ -7,6 +7,7 @@ export type RealtimePriceResult =
       requestAt: string;
       distanceMeters: number;
       extraMeters: number;
+      billableExtraKilometres: number;
       baseFeeBaht: null;
       extraFeeBaht: null;
       totalBaht: null;
@@ -17,6 +18,7 @@ export type RealtimePriceResult =
       requestAt: string;
       distanceMeters: number;
       extraMeters: number;
+      billableExtraKilometres: number;
       baseFeeBaht: number;
       extraFeeBaht: number;
       totalBaht: number;
@@ -26,7 +28,7 @@ export type RealtimePriceResult =
 /**
  * Quote preview from the actual server instant when the customer presses
  * "เรียกช่าง". No actual payment is authorized by this calculation.
- * No default per-kilometre rate or rounding policy is assumed.
+ * Chang24 applies owner-approved rate and rounding from SERVICE_POLICY.
  */
 export function realtimeQuote(
   requestReceivedAt: Date,
@@ -40,9 +42,11 @@ export function realtimeQuote(
   }
   const requestAt = requestReceivedAt.toISOString();
   const extraMeters = Math.max(0, distanceMeters - SERVICE_POLICY.includedRoadMeters);
+  const billableExtraKilometres = rounding === "CEIL_KILOMETRE"
+    ? Math.ceil(extraMeters / 1000) : extraMeters / 1000;
   const window = dispatchWindow(requestReceivedAt);
   if (window === "CLOSED") return {
-    status: "CLOSED", requestAt, distanceMeters, extraMeters,
+    status: "CLOSED", requestAt, distanceMeters, extraMeters, billableExtraKilometres,
     baseFeeBaht: null, extraFeeBaht: null, totalBaht: null, rounding: null,
   };
   if (extraMeters > 0 && (excessBahtPerKm === null || rounding === null)) return {
@@ -67,22 +71,12 @@ export function realtimeQuote(
   const extraFeeBaht = satang / 100;
   return {
     status: "QUOTABLE", requestAt, distanceMeters, extraMeters,
-    baseFeeBaht, extraFeeBaht, totalBaht: baseFeeBaht + extraFeeBaht,
+    billableExtraKilometres, baseFeeBaht, extraFeeBaht, totalBaht: baseFeeBaht + extraFeeBaht,
     rounding: rounding ?? "PRO_RATA",
   };
 }
 
-/**
- * Configuration is server-only. Both fields must be set from explicitly
- * approved tariffs; otherwise >5km stays unquoted.
- */
-export function approvedExtraDistancePolicy(env: Record<string, string | undefined>) {
-  const rateRaw = env.CHANG24_APPROVED_EXTRA_BAHT_PER_KM;
-  const roundingRaw = env.CHANG24_APPROVED_EXTRA_ROUNDING;
-  if (!rateRaw || !roundingRaw) return { rate: null, rounding: null } as const;
-  if (!/^(?:0|[1-9]\d{0,4})$/.test(rateRaw)
-    || !["PRO_RATA", "CEIL_KILOMETRE"].includes(roundingRaw)) {
-    return { rate: null, rounding: null } as const;
-  }
-  return { rate: Number(rateRaw), rounding: roundingRaw as ExtraDistanceRounding };
+/** Owner-approved Chang24 pricing is versioned in SERVICE_POLICY, not environment. */
+export function approvedExtraDistancePolicy() {
+  return { rate: SERVICE_POLICY.extraDistance.bahtPerKm, rounding: SERVICE_POLICY.extraDistance.rounding };
 }
