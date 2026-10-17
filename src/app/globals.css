@@ -14,3 +14,9 @@
 
 .service-card{padding:12px 12px 20px;overflow:hidden}.service-photo{display:block;width:100%;height:121px;overflow:hidden;border-radius:9px;background:#28251a;border:1px solid #534327}.service-photo img{width:100%;height:100%;display:block;object-fit:cover;filter:brightness(.86) saturate(.82);transition:transform .25s,filter .25s}.service-card:hover .service-photo img{transform:scale(1.035);filter:brightness(1) saturate(1)}.service-card .service-icon{margin:13px 0 10px}.service-card strong,.service-card p,.service-card .service-more{margin-left:5px;margin-right:5px}
 @media(max-width:450px){.service-photo{height:95px}.service-card{padding:9px 9px 15px}}
+
+/* Approved original owner-supplied Day Neramit raster logo */
+.hero-art img{height:225px;width:280px;max-width:88%;object-fit:contain}
+.hero-art p,.hero-art small{display:none}
+.hero-art{min-height:265px}
+@media(max-width:780px){.hero-art img{height:190px;width:245px}.hero-art{min-height:222px}}
