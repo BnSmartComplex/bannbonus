@@ -26,7 +26,7 @@ export function StaffRoleGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<State>("CHECKING");
 
   useEffect(() => {
-    if (pathname === "/login") return;
+    if (pathname === "/login" || pathname === "/auth/callback") return;
     let mounted = true;
     const supabase = getSupabase();
     if (!supabase) {
@@ -55,7 +55,7 @@ export function StaffRoleGate({ children }: { children: ReactNode }) {
     return () => { mounted = false; };
   }, [pathname]);
 
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login" || pathname === "/auth/callback") return <>{children}</>;
   if (status === "AUTHORIZED") return <>{children}</>;
   return <section className="card" style={{maxWidth:620,margin:"70px auto",padding:25}} aria-live="polite">
     {status === "CHECKING" && <p>กำลังตรวจสอบสิทธิ์ทีมงาน…</p>}
