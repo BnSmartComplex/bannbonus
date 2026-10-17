@@ -2,37 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
-import { parseRouteDurationSeconds, previewOfficeDeparture } from "@/lib/office-route";
+import { previewOfficeDeparture } from "@/lib/office-route";
+import { parseOpenRouteServiceGeoJson } from "@/lib/openstreetmap-route";
 import { approvedExtraDistancePolicy, realtimeQuote } from "@/lib/realtime-quote";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-/** Customer is never allowed to specify the origin, fee or departure timestamp. */
-const destination = z.union([
-  z.object({
-    latitude: z.number().finite().min(5).max(21),
-    longitude: z.number().finite().min(97).max(106),
-  }).strict(),
-  z.object({
-    address: z.string().trim().min(15).max(600),
-    district: z.enum(["BANG_YAI", "BANG_BUA_THONG"]),
-  }).strict(),
-]);
+/** Coordinates only: routing must use a confirmed customer pin, not a guessed geocode. */
+const destination = z.object({
+  latitude: z.number().finite().min(5).max(21),
+  longitude: z.number().finite().min(97).max(106),
+}).strict();
 
 function json(body: object, status: number) {
-  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(body, { status, headers: {
+    "Cache-Control": "private, no-store, max-age=0",
+    "X-Content-Type-Options": "nosniff",
+  } });
 }
 
 /**
- * Office -> customer driving route preview, authenticated and server-only.
- * Google Routes key must be provisioned with project-level usage limits.
- * Travel time assumes departure from office NOW; quote pricing is handled
- * separately using server-received realtime request time. No billing writes.
+ * Owner-verified office pin -> confirmed customer pin, driven along OSM roads.
+ * Fail closed if provider unavailable: no guessed route, distance or payment.
+ * ORS duration is a normal routing estimate, NOT guaranteed traffic-aware ETA.
  */
 export async function POST(request: NextRequest) {
   const raw = await request.json().catch(() => null);
   const parsed = destination.safeParse(raw);
-  if (!parsed.success) return json({ error: "INVALID_CUSTOMER_LOCATION" }, 400);
+  if (!parsed.success) return json({ error: "CUSTOMER_MAP_PIN_REQUIRED" }, 400);
+
   const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   if (!bearer) return json({ error: "LOGIN_REQUIRED" }, 401);
 
@@ -43,61 +42,58 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error } = await auth.auth.getUser(bearer);
   if (error || !user) return json({ error: "INVALID_SESSION" }, 401);
 
-  const apiKey = process.env.GOOGLE_ROUTES_API_KEY;
+  // Routing is a paid/limited shared service. Never expose ORS key in browser.
+  const apiKey = process.env.OPENROUTESERVICE_API_KEY;
   if (!apiKey) return json({ error: "ROUTE_PROVIDER_NOT_CONFIGURED" }, 503);
 
-  const origin = process.env.DAY_NERAMIT_VERIFIED_PLACE_ID
-    ? { placeId: process.env.DAY_NERAMIT_VERIFIED_PLACE_ID }
-    : { address: `${dayNeramitBusiness.officeAddress}, ประเทศไทย` };
-  const end = "latitude" in parsed.data
-    ? { location: { latLng: { latitude: parsed.data.latitude, longitude: parsed.data.longitude } } }
-    : { address: `${parsed.data.address}, ${parsed.data.district === "BANG_YAI" ? "อำเภอบางใหญ่" : "อำเภอบางบัวทอง"}, จังหวัดนนทบุรี ประเทศไทย` };
+  const office = dayNeramitBusiness.officeCoordinates;
   try {
-    const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+    const response = await fetch("https://api.openrouteservice.org/v2/directions/driving-car/geojson", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
+        "Accept": "application/geo+json",
+        Authorization: apiKey,
       },
       body: JSON.stringify({
-        origin,
-        destination: end,
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE",
-        units: "METRIC",
-        languageCode: "th",
+        coordinates: [
+          [office.longitude, office.latitude],
+          [parsed.data.longitude, parsed.data.latitude],
+        ],
+        preference: "recommended",
+        instructions: true,
+        language: "en",
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" }, 503);
-    const result = await response.json() as { routes?: Array<{ distanceMeters?: number; duration?: string }> };
-    const route = result.routes?.[0];
-    if (!route || !Number.isSafeInteger(route.distanceMeters) || (route.distanceMeters ?? -1) < 0) {
-      return json({ error: "DRIVING_ROUTE_NOT_FOUND" }, 422);
-    }
-    const seconds = parseRouteDurationSeconds(route.duration);
-    if (seconds === null) return json({ error: "DRIVING_ETA_NOT_AVAILABLE" }, 422);
-    const serverNow = new Date();
-    const preview = previewOfficeDeparture(serverNow, route.distanceMeters!, seconds);
+    if (!response.ok) return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" }, response.status === 429 ? 429 : 503);
+    const route = parseOpenRouteServiceGeoJson(await response.json());
+    if (!route) return json({ error: "DRIVING_ROUTE_NOT_FOUND" }, 422);
+
+    const calculatedAt = new Date();
+    const estimatedTravel = previewOfficeDeparture(calculatedAt, route.distanceMeters, route.durationSeconds);
     const { rate, rounding } = approvedExtraDistancePolicy();
-    const quote = realtimeQuote(serverNow, route.distanceMeters!, rate, rounding);
+    const quote = realtimeQuote(calculatedAt, route.distanceMeters, rate, rounding);
+
     return json({
       distanceMeters: route.distanceMeters,
-      durationSeconds: seconds,
-      durationMinutes: Math.ceil(seconds / 60),
+      durationSeconds: route.durationSeconds,
+      durationMinutes: Math.ceil(route.durationSeconds / 60),
+      geometry: route.geometry,
+      roadSteps: route.roadSteps,
+      provider: "OPENROUTESERVICE_OSM",
       originOfficeAddress: dayNeramitBusiness.officeAddress,
       originOfficeMapUrl: dayNeramitBusiness.officeMapUrl,
-      provider: "GOOGLE_ROUTES",
-      calculatedAt: serverNow.toISOString(),
+      originOfficeCoordinates: office,
+      calculatedAt: calculatedAt.toISOString(),
       pricing: quote,
       approvedExcessRateBahtPerKm: rate,
-      departureAt: preview.departureAt,
-      estimatedArrivalAt: preview.estimatedArrivalAt,
-      notice: "ระยะทางและเวลาขับรถจากสำนักงานถึงลูกค้าเป็นการประมาณการ ยอดรวมในหน้าต่างยืนยันคำนวณจากเวลาที่เซิร์ฟเวอร์รับคำขอ ไม่ใช่เวลาออกเดินทาง",
-    }, 200);
+      departureAt: estimatedTravel.departureAt,
+      estimatedArrivalAt: estimatedTravel.estimatedArrivalAt,
+      notice: "แผนที่และระยะทางขับรถอ้างอิง OpenStreetMap ชื่อซอย/ตำบลขึ้นกับข้อมูลจริง หมู่ที่ต้องให้ลูกค้ายืนยัน เวลาที่คาดว่าจะถึงไม่ใช่ข้อมูลจราจรสด และราคาจริงยึดเวลาที่ระบบรับการกดเรียกช่าง",
+    },200);
   } catch {
-    return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" }, 503);
+    return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" },503);
   }
 }
