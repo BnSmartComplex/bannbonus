@@ -65,6 +65,22 @@ insert into public.tenant_memberships(tenant_id,user_id,role) values
   ('${ids.tenant}','${accounts.technician.id}','technician'),
   ('${ids.tenant}','${accounts.customer.id}','customer'),
   ('${ids.otherTenant}','${accounts.outsider.id}','customer');`);
+sql(`insert into public.technician_capabilities(tenant_id, technician_id, service_area, skill)
+values ('${ids.tenant}', '${accounts.technician.id}', 'BANGKOK', 'OTHER');`);
+ok(await accounts.technician.client.rpc("set_technician_presence", {
+  p_tenant_id: ids.tenant, p_presence_status: "ONLINE",
+}), "set technician presence");
+const eligibilityStart = new Date(Date.now() + 3600000);
+const eligibility = ok(await accounts.operatorA.client.rpc("get_technician_dispatch_eligibility", {
+  p_tenant_id: ids.tenant,
+  p_technician_id: accounts.technician.id,
+  p_service_area: "BANGKOK",
+  p_skill: "OTHER",
+  p_scheduled_start: eligibilityStart.toISOString(),
+  p_scheduled_end: new Date(eligibilityStart.getTime() + 3600000).toISOString(),
+}), "dispatch eligibility");
+assert.equal(eligibility[0].is_available, true);
+passed("backend eligibility separates fresh ONLINE presence from availability");
 
 const owner = accounts.customer.client;
 const outsider = accounts.outsider.client;
@@ -131,6 +147,25 @@ for (let attempt = 0; attempt < 3; attempt += 1) {
   assert.equal(sql(`select count(*) from public.booking_requests where id in ('${bookings[0]}','${bookings[1]}') and status='PENDING_TEAM_REVIEW';`), "1");
 }
 passed("three competing-booking races: one winner, one pending loser, no double assignment");
+
+const dispatchStart = new Date(tomorrow.getTime() + 10 * 86400000);
+const dispatchBooking = await booking();
+const dispatched = ok(await operators[0].rpc("dispatch_and_assign_technician", {
+  p_booking_id: dispatchBooking,
+  p_technician_id: accounts.technician.id,
+  p_scheduled_start: dispatchStart.toISOString(),
+  p_scheduled_end: new Date(dispatchStart.getTime() + 3600000).toISOString(),
+}), "eligible atomic dispatch");
+assert.ok(dispatched);
+const blockedDispatch = await booking();
+const blockedResult = await operators[1].rpc("dispatch_and_assign_technician", {
+  p_booking_id: blockedDispatch,
+  p_technician_id: accounts.technician.id,
+  p_scheduled_start: new Date(dispatchStart.getTime() + 1800000).toISOString(),
+  p_scheduled_end: new Date(dispatchStart.getTime() + 5400000).toISOString(),
+});
+assert.match(blockedResult.error?.message ?? "", /DISPATCH_INELIGIBLE:.*SCHEDULE_CONFLICT/);
+passed("atomic dispatch accepts eligible technician and rejects a conflicting assignment");
 
 const id = await booking();
 const appointment = ok(await operators[0].rpc("approve_booking_and_assign_technician", payload(id, 9)), "approval for technician flow");
