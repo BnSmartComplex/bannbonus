@@ -8,6 +8,7 @@ import { getSupabase } from "@/lib/supabase";
 import { booking } from "@/lib/validation";
 import { ServiceTerms } from "@/components/service-terms";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
+import { CustomerRoadMap, type RoadGeometry } from "@/components/customer-road-map";
 
 const categories = [
   ["OTHER", "อื่น ๆ / ไม่ทราบประเภท"],
@@ -40,6 +41,9 @@ type RouteQuote = {
   estimatedArrivalAt: string;
   pricing: RoutePricing;
   approvedExcessRateBahtPerKm: number | null;
+  geometry: RoadGeometry;
+  roadSteps: Array<{instructionTh:string;roadName:string|null;distanceMeters:number}>;
+  provider: "OPENROUTESERVICE_OSM";
 };
 type PricePopup =
   | { kind: "QUOTE" | "RATE_PENDING"; route: RouteQuote }
@@ -55,6 +59,9 @@ type FormValues = {
   area: "BANGKOK" | "NONTHABURI";
   district: "BANG_YAI" | "BANG_BUA_THONG";
   service_address: string;
+  subdistrict: string;
+  village_group: string;
+  soi: string;
   contact_name: string;
   contact_phone: string;
   consent: boolean;
@@ -80,6 +87,9 @@ export default function BookingPage() {
     area: "NONTHABURI",
     district: "BANG_YAI",
     service_address: "",
+    subdistrict: "",
+    village_group: "",
+    soi: "",
     contact_name: "",
     contact_phone: "",
     consent: false,
@@ -133,7 +143,7 @@ export default function BookingPage() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
-  async function requestRoute(destination: { latitude:number; longitude:number } | { address:string; district:"BANG_YAI"|"BANG_BUA_THONG" }) {
+  async function requestRoute(destination: { latitude:number; longitude:number }) {
     setCheckingDistance(true);
     setDistance(null);
     const supabase = getSupabase();
@@ -141,7 +151,7 @@ export default function BookingPage() {
       ? await supabase.auth.getSession()
       : { data: { session: null } };
     if (!session) {
-      setGeoMessage("กรุณาเข้าสู่ระบบก่อนดูระยะทางอัตโนมัติ หรือเปิด Google Maps ดูเส้นทางได้");
+      setGeoMessage("กรุณาเข้าสู่ระบบก่อนดูระยะทางตามถนน หรือดูแผนที่ OpenStreetMap ได้");
       setCheckingDistance(false);
       return;
     }
@@ -158,23 +168,42 @@ export default function BookingPage() {
         setDistance(result);
         setGeoMessage("คำนวณเส้นทางขับรถจากสำนักงานไปหาลูกค้าแล้ว (ยังไม่ใช่การยืนยันค่าบริการ)");
       } else {
-        setGeoMessage("ยังคำนวณระยะทางอัตโนมัติไม่ได้ กรุณาดูเส้นทางใน Google Maps หรือให้ทีมงานตรวจสอบ");
+        setGeoMessage("ยังคำนวณระยะทางตามถนนไม่ได้ กรุณานัดหมายเพื่อให้ทีมงานตรวจสอบ");
       }
     } catch {
-      setGeoMessage("บริการคำนวณเส้นทางขัดข้อง กรุณาใช้ Google Maps หรือให้ทีมงานตรวจสอบ");
+      setGeoMessage("บริการคำนวณเส้นทางขัดข้อง กรุณาให้ทีมงานตรวจสอบ");
     } finally {
       setCheckingDistance(false);
     }
   }
 
-  function previewAddressRoute() {
-    if (values.service_address.trim().length < 15) {
-      setGeoMessage("กรุณากรอกที่อยู่ลูกค้าให้ครบก่อนคำนวณระยะทาง");
+  function previewPinnedRoute() {
+    if (!customerCoords || !locationConfirmed) {
+      setGeoMessage("กรุณาปักหมุดบ้านบนแผนที่ แล้วติ๊กยืนยันตำแหน่งก่อนคำนวณ");
       return;
     }
-    setCustomerCoords(null);
+    void requestRoute(customerCoords);
+  }
+
+  function selectOnMap(point: {latitude:number;longitude:number}) {
+    setCustomerCoords(point);
     setLocationConfirmed(false);
-    void requestRoute({ address: values.service_address.trim(), district: values.district });
+    setDistance(null);
+    setGeoMessage("ปักหมุดแล้ว กรุณาตรวจสอบตำบล หมู่ที่ และซอยให้ตรงกับบ้าน แล้วกดยืนยันจุดหมาย");
+    resetIdempotencyKey();
+  }
+
+  function fullServiceAddress() {
+    const district=values.district==="BANG_YAI"?"บางใหญ่":"บางบัวทอง";
+    const parts=[
+      values.service_address.trim(),
+      values.soi.trim() ? `ซอย${values.soi.trim().replace(/^ซอย\s*/, "")}` : "",
+      values.village_group.trim() ? `หมู่ที่ ${values.village_group.trim()}` : "",
+      `ตำบล${values.subdistrict.trim().replace(/^ตำบล\s*/, "")}`,
+      `อำเภอ${district}`,
+      "จังหวัดนนทบุรี",
+    ];
+    return parts.filter(Boolean).join(" ");
   }
 
   function useMyLocation() {
@@ -200,19 +229,24 @@ export default function BookingPage() {
   }
 
   function openDirections() {
-    if (!customerCoords && values.service_address.trim().length < 15) return;
-    const origin = encodeURIComponent(dayNeramitBusiness.officeAddress);
-    const districtName = values.district === "BANG_YAI" ? "อำเภอบางใหญ่" : "อำเภอบางบัวทอง";
-    const destination = encodeURIComponent(customerCoords && locationConfirmed
-      ? `${customerCoords.latitude},${customerCoords.longitude}`
-      : `${values.service_address.trim()}, ${districtName}, นนทบุรี`);
-    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`, "_blank", "noopener,noreferrer");
+    if (!customerCoords) return;
+    const origin=dayNeramitBusiness.officeCoordinates;
+    const route=encodeURIComponent(`${origin.latitude},${origin.longitude};${customerCoords.latitude},${customerCoords.longitude}`);
+    window.open(`https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${route}`,"_blank","noopener,noreferrer");
   }
 
   async function showRealtimePopup() {
     setError("");
     if (values.service_address.trim().length < 15) {
       setError("กรุณากรอกที่อยู่บ้านหรือจุดนัดหมายให้ครบก่อนเรียกช่าง");
+      return;
+    }
+    if (!customerCoords || !locationConfirmed) {
+      setError("กรุณาปักหมุดตำแหน่งบ้านลูกค้าและยืนยันหมุดบนแผนที่ก่อนเรียกช่างทันที");
+      return;
+    }
+    if (!values.subdistrict.trim()) {
+      setError("กรุณาระบุตำบลของบ้านลูกค้า");
       return;
     }
     const supabase = getSupabase();
@@ -234,9 +268,7 @@ export default function BookingPage() {
         setPopup({kind:"CLOSED"});
         return;
       }
-      const destination = locationConfirmed && customerCoords
-        ? customerCoords
-        : {address:values.service_address.trim(),district:values.district};
+      const destination = customerCoords;
       const routeResponse = await fetch("/api/route-distance", {
         method:"POST",
         headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},
@@ -325,7 +357,11 @@ export default function BookingPage() {
         throw new Error("รูปต้องเป็น JPG, PNG หรือ WebP และมีขนาดไม่เกิน 5 MB ต่อรูป");
       }
 
-      if (values.service_address.trim().length < 15) throw new Error("กรุณากรอกที่อยู่บ้านหรือสถานที่นัดให้ครบถ้วน");
+      if (values.service_address.trim().length < 15 || !values.subdistrict.trim()) throw new Error("กรุณากรอกบ้านเลขที่ รายละเอียดที่อยู่ และตำบลให้ครบถ้วน");
+      if (values.village_group && !/^[1-9][0-9]?$/.test(values.village_group)) throw new Error("หมู่ที่ต้องเป็นเลขจำนวนเต็ม 1–99 หรือเว้นว่างหากไม่มีหมู่ที่");
+      const confirmedAddress=fullServiceAddress();
+      if (confirmedAddress.length > 600) throw new Error("ที่อยู่ยาวเกิน 600 ตัวอักษร กรุณาย่อรายละเอียด");
+      if (mode==="IMMEDIATE" && (!locationConfirmed || !customerCoords)) throw new Error("เรียกช่างทันทีต้องยืนยันหมุดบ้านก่อน");
       const draft = booking.safeParse({ ...values, photo_paths: files.map(() => "pending") });
       if (!draft.success) {
         throw new Error(draft.error.issues.map((issue) => issue.message).join("; "));
@@ -359,7 +395,7 @@ export default function BookingPage() {
         p_brand: parsed.data.brand,
         p_model_number: parsed.data.model_number,
         p_district: values.district,
-        p_service_address: values.service_address.trim(),
+        p_service_address: confirmedAddress,
         p_latitude: locationConfirmed ? customerCoords?.latitude ?? null : null,
         p_longitude: locationConfirmed ? customerCoords?.longitude ?? null : null,
         p_contact_name: parsed.data.contact_name,
@@ -456,8 +492,29 @@ export default function BookingPage() {
             placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน ตำบล จุดสังเกต และรหัสไปรษณีย์"
             value={values.service_address}
             onChange={event => { update("service_address", event.target.value); setDistance(null); setLocationConfirmed(false); setCustomerCoords(null); }}/>
-          <small>สำนักงานช่าง: {dayNeramitBusiness.officeAddress} · <a href={dayNeramitBusiness.officeMapUrl} target="_blank" rel="noopener noreferrer">ดูตำแหน่งสำนักงานบน Google Maps</a></small>
+          <small>สำนักงานช่าง: {dayNeramitBusiness.officeAddress} · <a href={dayNeramitBusiness.officeMapUrl} target="_blank" rel="noopener noreferrer">ดูตำแหน่งสำนักงาน</a></small>
         </div>
+        <div className="field">
+          <label htmlFor="subdistrict">ตำบล *</label>
+          <input id="subdistrict" required maxLength={100} placeholder="เช่น เสาธงหิน" value={values.subdistrict}
+            onChange={e=>{update("subdistrict",e.target.value);setDistance(null);}}/>
+          <small>ระบุชื่อตำบลตามที่อยู่จริง แผนที่อาจไม่มีชื่อทุกตำบล ทีมงานจะตรวจสอบความตรงกันของตำบลและหมุด</small>
+        </div>
+        <div className="field">
+          <label htmlFor="village-group">หมู่ที่ (ถ้ามี)</label>
+          <input id="village-group" inputMode="numeric" pattern="[1-9][0-9]?" maxLength={2} placeholder="เช่น 5"
+            value={values.village_group} onChange={e=>update("village_group",e.target.value)}/>
+          <small>หมู่ที่เป็นเลขหมู่ทางปกครอง ไม่ใช่ชื่อหมู่บ้าน ถ้าไม่มีหรือไม่ทราบให้เว้นว่าง ไม่เดาเลข</small>
+        </div>
+        <div className="field">
+          <label htmlFor="soi">ชื่อซอย / ถนน (ถ้ามี)</label>
+          <input id="soi" maxLength={120} placeholder="เช่น หมู่บ้านจิตตกาญจน์วิลล่า 2"
+            value={values.soi} onChange={e=>update("soi",e.target.value)}/>
+          <small>หากชื่อซอยไม่มีใน OpenStreetMap ให้กรอกตามป้ายจริง ลูกค้ายืนยันเอง</small>
+        </div>
+        <CustomerRoadMap point={customerCoords} route={distance?.geometry??null}
+          onPick={selectOnMap} subdistrict={values.subdistrict}
+          moo={values.village_group} soi={values.soi}/>
         <div className="card" style={{margin:"14px 0"}}>
           <strong>ตำแหน่งบ้านและระยะทาง</strong>
           <p className="muted">กดอนุญาตตำแหน่งจากอุปกรณ์เฉพาะเมื่อคุณอยู่ที่บ้านหรือสถานที่นัด หากไม่อยู่ที่นั่นให้กรอกที่อยู่ไว้ก่อนเพื่อให้ทีมงานตรวจสอบ</p>
@@ -473,22 +530,26 @@ export default function BookingPage() {
             }}/>
             {" "}ยืนยันว่าพิกัดนี้คือสถานที่ที่จะให้ช่างไป
           </label>}
-          <p><button className="btn btn-outline" type="button" disabled={checkingDistance || values.service_address.trim().length < 15}
-            onClick={previewAddressRoute}>
-            {checkingDistance ? "กำลังคำนวณ…" : "คำนวณระยะทางจากที่อยู่ลูกค้า"}
+          <p><button className="btn btn-outline" type="button" disabled={checkingDistance || !customerCoords || !locationConfirmed}
+            onClick={previewPinnedRoute}>
+            {checkingDistance ? "กำลังคำนวณ…" : "คำนวณเส้นทางขับรถจากหมุดบ้านลูกค้า"}
           </button></p>
           {geoMessage && <p className="notice" role="status">{geoMessage}</p>}
           {distance && <div className="notice" role="status">
             <strong>สำนักงาน → บ้านลูกค้า</strong>
-            <p>ระยะทางขับรถ: {(distance.distanceMeters/1000).toFixed(2)} กม. · เวลาเดินทางประมาณ {distance.durationMinutes} นาที</p>
+            <p>ระยะทางขับรถ: {(distance.distanceMeters/1000).toFixed(2)} กม. · เวลาเดินทางประมาณ {distance.durationMinutes} นาที (ไม่ได้ใช้ข้อมูลจราจรสด)</p>
             <p>หากออกจากสำนักงานตอน {new Date(distance.departureAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.
              คาดว่าจะถึงประมาณ {new Date(distance.estimatedArrivalAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"})} น.</p>
             <p>ส่วนเกิน 5 กม.: {(distance.pricing.extraMeters/1000).toFixed(2)} กม. (คิดเงิน {distance.pricing.billableExtraKilometres} กม. × {distance.approvedExcessRateBahtPerKm} บาท) · ค่าเดินทางเพิ่ม: {baht(distance.pricing.extraFeeBaht)} ·
               ยอดรวม: <strong>{baht(distance.pricing.totalBaht)}</strong></p>
             <small>ราคาช่วงกลางวัน/กลางคืนยึดเวลาที่ลูกค้ากดเรียกช่างและเซิร์ฟเวอร์รับรายการ ไม่ใช่เวลาเดินทางออกจากสำนักงาน</small>
           </div>}
-          {(customerCoords || values.service_address.trim().length >= 15) && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางและระยะทางบน Google Maps</button></p>}
-          {!distance && <p className="muted">ยังไม่ยืนยันระยะทางตามถนนและค่าบริการ เจ้าหน้าที่จะตรวจสอบก่อนนัดหมายหรือออกเดินทาง</p>}
+          {customerCoords && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางบน OpenStreetMap</button></p>}
+          {distance?.roadSteps?.length ? <details><summary>รายละเอียดเส้นทางและชื่อถนน / ซอย</summary>
+            <ol>{distance.roadSteps.map((step,index)=><li key={index}>{step.instructionTh} {step.distanceMeters>0?`(${(step.distanceMeters/1000).toFixed(2)} กม.)`:""}</li>)}</ol>
+            <small>ข้อความเลี้ยวแสดงภาษาไทย ชื่อถนน/ซอยจากข้อมูล OpenStreetMap อาจไม่ครบ โปรดดูแผนที่ประกอบ</small>
+          </details>:null}
+          {!distance && <p className="muted">หากยังไม่แสดงระยะทางจากเส้นทางรถจริง จะยังไม่ยืนยันราคา เจ้าหน้าที่ต้องตรวจสอบก่อนออกเดินทาง</p>}
         </div>
         <div className="field">
           <label htmlFor="contact-name">ชื่อผู้ติดต่อ *</label>
