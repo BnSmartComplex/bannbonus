@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 20
     env:
       SUPABASE_LOCAL_TEST_CONFIRM: DISPOSABLE_LOCAL_STACK
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -42,7 +43,7 @@ jobs:
           grep -q '^jwt_expiry = 60$' supabase/config.toml
       - name: Start disposable Postgres, Auth, REST and Storage
         run: |
-          npx --yes supabase@2.75.0 start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,inbucket > "$RUNNER_TEMP/supabase-start.log"
+          npx --yes supabase@2.75.0 start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,mailpit,postgres-meta > "$RUNNER_TEMP/supabase-start.log"
           npx --yes supabase@2.75.0 status -o json > "$RUNNER_TEMP/supabase-local-status.json"
           chmod 600 "$RUNNER_TEMP/supabase-local-status.json"
       - name: Database regression tests
