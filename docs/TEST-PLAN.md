@@ -28,7 +28,7 @@ Each test needs actual implementation evidence and pass/fail record. Focused exe
 
 ## Release-blocker regression evidence (2026-10-17)
 
-- `supabase/tests/booking_approval_regression.sql` now contains 40 rollback-only pgTAP assertions covering operator/admin directory authorization, tenant isolation, duplicate approval retries, invalid/backward technician transitions, idempotent status requests, cancellation-to-booking reconciliation, duplicate booking requests, overlap constraints and Bangkok boundaries.
+- `supabase/tests/booking_approval_regression.sql` now contains 42 rollback-only pgTAP assertions covering operator/admin directory authorization, tenant isolation, duplicate approval retries, invalid/backward technician transitions, idempotent status requests, cancellation-to-booking reconciliation, duplicate booking requests, overlap constraints and Bangkok boundaries.
 - The directory RPC is the only operator picker source; it is SECURITY DEFINER but returns rows only after checking operator/tenant_admin membership for the requested tenant.
 - `scripts/booking-approval-concurrency.mjs` performs a real two-authenticated-session exact-approval race against a disposable project and asserts one appointment id and one appointment row.
 - `src/lib/schedule.ts` validates real calendar dates, future ranges, end-after-start, and converts Asia/Bangkok wall-clock values to UTC before the RPC.
