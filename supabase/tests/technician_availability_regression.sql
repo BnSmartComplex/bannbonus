@@ -35,7 +35,7 @@ insert into public.booking_appointments(
   pg_temp.c1_id('appointment'), pg_temp.c1_id('booking'), pg_temp.c1_id('tenant'),
   pg_temp.c1_id('technician'), now() + interval '2 hours', now() + interval '3 hours',
   299, pg_temp.c1_id('operator'));
-select plan(23);
+select plan(26);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', pg_temp.c1_id('customer')::text, true);
@@ -187,6 +187,32 @@ select throws_ok(
 select is(
   (select count(*) from public.booking_appointments where booking_id = pg_temp.c1_id('dispatch_booking')),
   1::bigint, 'atomic dispatch creates one appointment'
+);
+select is(
+  public.dispatch_and_assign_technician(
+    pg_temp.c1_id('dispatch_booking'), pg_temp.c1_id('technician'),
+    (select scheduled_start from public.booking_appointments where booking_id = pg_temp.c1_id('dispatch_booking')),
+    (select scheduled_end from public.booking_appointments where booking_id = pg_temp.c1_id('dispatch_booking'))
+  ),
+  (select id from public.booking_appointments where booking_id = pg_temp.c1_id('dispatch_booking')),
+  'exact dispatch replay returns the original assignment'
+);
+select throws_ok(
+  $q$select public.dispatch_and_assign_technician(
+    pg_temp.c1_id('conflict_booking'), pg_temp.c1_id('technician'),
+    now() - interval '2 hours', now() - interval '1 hour')$q$,
+  'P0001', 'INVALID_TIME_RANGE', 'past dispatch is rejected on the server'
+);
+reset role;
+insert into public.technician_capabilities(tenant_id, technician_id, service_area, skill)
+values (pg_temp.c1_id('tenant'), pg_temp.c1_id('technician'), 'NONTHABURI', 'PLUMBING');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', pg_temp.c1_id('operator')::text, true);
+select is(
+  (select is_available from public.get_technician_dispatch_eligibility(
+    pg_temp.c1_id('tenant'), pg_temp.c1_id('technician'), 'BANGKOK', 'PLUMBING',
+    now() + interval '6 hours', now() + interval '7 hours')),
+  false, 'capability requires one row matching both area and skill'
 );
 select is(
   (select status from public.booking_requests where id = pg_temp.c1_id('dispatch_booking')),

@@ -19,16 +19,18 @@ export default function LoginPage() {
 
     setBusy(true);
     try {
-      await supabase.auth.signInWithOtp({
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
           shouldCreateUser: false,
           emailRedirectTo: `${window.location.origin}/booking`,
         },
       });
-      setMessage("หากอีเมลนี้มีบัญชีที่ได้รับอนุญาต ระบบจะส่งลิงก์เข้าสู่ระบบให้");
+      setMessage(otpError
+        ? "ส่งลิงก์ไม่สำเร็จ กรุณาลองอีกครั้งหรือติดต่อทีมงาน"
+        : "หากอีเมลนี้มีบัญชีที่ได้รับอนุญาต ระบบจะส่งลิงก์เข้าสู่ระบบให้");
     } catch {
-      setMessage("หากอีเมลนี้มีบัญชีที่ได้รับอนุญาต ระบบจะส่งลิงก์เข้าสู่ระบบให้");
+      setMessage("ส่งลิงก์ไม่สำเร็จ กรุณาลองอีกครั้งหรือติดต่อทีมงาน");
     } finally {
       setBusy(false);
     }

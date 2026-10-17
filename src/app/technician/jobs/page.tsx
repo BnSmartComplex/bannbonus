@@ -23,6 +23,7 @@ const reasonLabels: Record<string, string> = {
   SCHEDULE_CONFLICT: "มีการจองเวลาซ้อนกัน",
   SKILL_MISMATCH: "ไม่ตรงกับทักษะที่ร้องขอ",
   AREA_MISMATCH: "ไม่ครอบคลุมพื้นที่ที่ร้องขอ",
+  SKILL_AREA_MISMATCH: "ไม่มีชุดทักษะและพื้นที่ที่ตรงกับงานนี้",
 };
 
 export default function TechnicianJobsPage() {
@@ -71,6 +72,33 @@ export default function TechnicianJobsPage() {
 
   useEffect(() => { void load(); }, [supabase]);
 
+  useEffect(() => {
+    if (!supabase || !tenantId || presence !== "ONLINE") return;
+    let active = true;
+    const heartbeat = async () => {
+      if (document.visibilityState !== "visible") return;
+      const { error } = await supabase.rpc("set_technician_presence", {
+        p_tenant_id: tenantId,
+        p_presence_status: "ONLINE",
+      });
+      if (!active) return;
+      if (error) {
+        setEligibility(null);
+        setMessage("ต่ออายุสถานะ ONLINE ไม่สำเร็จ: " + error.message);
+      } else {
+        void load();
+      }
+    };
+    const timer = window.setInterval(() => { void heartbeat(); }, 2 * 60 * 1000);
+    const onVisibility = () => { if (document.visibilityState === "visible") void heartbeat(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [supabase, tenantId, presence]);
+
   async function setTechnicianPresence(next: PresenceStatus) {
     if (!supabase || !tenantId) return;
     const { error } = await supabase.rpc("set_technician_presence", {
@@ -83,10 +111,14 @@ export default function TechnicianJobsPage() {
 
   async function update(id: string, status: string) {
     if (!supabase) return;
-    const { error } = await supabase.rpc("technician_update_appointment_status", {
-      p_appointment_id: id,
-      p_status: status,
-    });
+    const { error } = status === "IN_PROGRESS"
+      ? await supabase.rpc("technician_check_in", { p_appointment_id: id })
+      : status === "COMPLETED"
+        ? await supabase.rpc("technician_check_out", { p_appointment_id: id })
+        : await supabase.rpc("technician_update_appointment_status", {
+          p_appointment_id: id,
+          p_status: status,
+        });
     setMessage(error?.message ?? "อัปเดตสถานะแล้ว");
     if (!error) void load();
   }
@@ -112,7 +144,7 @@ export default function TechnicianJobsPage() {
           {job.status === "ASSIGNED" && <button className="btn" onClick={() => void update(job.id, "ACCEPTED")}>รับงาน</button>}
           {job.status === "ACCEPTED" && <button className="btn" onClick={() => void update(job.id, "IN_PROGRESS")}>เริ่มงาน</button>}
           {job.status === "IN_PROGRESS" && <button className="btn" onClick={() => void update(job.id, "COMPLETED")}>เสร็จงาน</button>}
-          {["ASSIGNED", "ACCEPTED", "IN_PROGRESS"].includes(job.status) && (
+          {["ASSIGNED", "ACCEPTED"].includes(job.status) && (
             <button className="btn" onClick={() => void update(job.id, "CANCELLED")}>ยกเลิกงาน</button>
           )}
         </article>

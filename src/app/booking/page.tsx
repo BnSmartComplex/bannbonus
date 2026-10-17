@@ -70,6 +70,8 @@ export default function BookingPage() {
       return;
     }
 
+    const paths: string[] = [];
+    let submitted = false;
     setBusy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -87,7 +89,6 @@ export default function BookingPage() {
         throw new Error(draft.error.issues.map((issue) => issue.message).join("; "));
       }
 
-      const paths: string[] = [];
       for (const file of files) {
         const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
         const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
@@ -123,11 +124,20 @@ export default function BookingPage() {
       if (requestError || !data) {
         throw new Error("บันทึกคำขอไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่");
       }
+      submitted = true;
       window.sessionStorage.removeItem(idempotencyStorageKey);
       idempotencyKey.current = null;
       setSuccess(String(data));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      const cause = caught instanceof Error ? caught.message : "เกิดข้อผิดพลาด กรุณาลองใหม่";
+      if (paths.length && !submitted) {
+        const { error: cleanupError } = await supabase.storage.from("equipment-photos").remove(paths);
+        setError(cleanupError
+          ? `${cause} · เก็บกวาดรูปที่อัปโหลดไม่สำเร็จ โปรดแจ้งทีมงาน`
+          : cause);
+      } else {
+        setError(cause);
+      }
     } finally {
       setBusy(false);
     }

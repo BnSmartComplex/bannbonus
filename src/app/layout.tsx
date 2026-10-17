@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PwaRegistration } from "@/components/pwa-registration";
+import { AuthControls } from "@/components/auth-controls";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/pricing">ค่าบริการ</Link>
               <Link href="/my-bookings">คำขอของฉัน</Link>
               <Link href="/staff">ทีมงาน</Link>
-              <Link href="/login">เข้าสู่ระบบ</Link>
+              <AuthControls />
             </div>
           </nav>
         </header>

@@ -14,6 +14,16 @@ describe("Asia/Bangkok schedule validation", () => {
     });
   });
 
+  it("supports appointments finishing after midnight in Bangkok", () => {
+    expect(validateSchedule({
+      date: "2026-10-17", startTime: "23:00", endTime: "01:00",
+    }, now)).toEqual({
+      ok: true,
+      startIso: "2026-10-17T16:00:00.000Z",
+      endIso: "2026-10-17T18:00:00.000Z",
+    });
+  });
+
   it("rejects invalid calendar dates", () => {
     expect(validateSchedule({
       date: "2026-02-30", startTime: "14:00", endTime: "15:00",

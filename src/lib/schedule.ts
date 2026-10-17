@@ -60,6 +60,10 @@ export function validateSchedule(
   const end = parseWallClock(draft.date, "วันเวลา", draft.endTime);
   if (!(end instanceof Date)) return end;
   if (startWithTime <= now) return { ok: false, message: "เวลาเริ่มต้องอยู่ในอนาคต" };
-  if (end <= startWithTime) return { ok: false, message: "เวลาสิ้นสุดต้องหลังเวลาเริ่ม" };
-  return { ok: true, startIso: startWithTime.toISOString(), endIso: end.toISOString() };
+  // A local end time earlier than the start time means the following Bangkok day.
+  const resolvedEnd = end < startWithTime
+    ? new Date(end.getTime() + 24 * 60 * 60 * 1000)
+    : end;
+  if (resolvedEnd <= startWithTime) return { ok: false, message: "เวลาสิ้นสุดต้องหลังเวลาเริ่ม" };
+  return { ok: true, startIso: startWithTime.toISOString(), endIso: resolvedEnd.toISOString() };
 }
