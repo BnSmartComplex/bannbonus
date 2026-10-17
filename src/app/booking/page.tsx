@@ -287,7 +287,7 @@ export default function BookingPage() {
         <div className="field">
           <label htmlFor="district">อำเภอที่ต้องการให้ช่างไป *</label>
           <select id="district" required value={values.district}
-            onChange={(event) => { update("district", event.target.value as FormValues["district"]); setDistance(null); }}>
+            onChange={(event) => { update("district", event.target.value as FormValues["district"]); setDistance(null); setLocationConfirmed(false); setCustomerCoords(null); }}>
             <option value="BANG_YAI">บางใหญ่</option>
             <option value="BANG_BUA_THONG">บางบัวทอง</option>
           </select>
@@ -298,7 +298,7 @@ export default function BookingPage() {
           <textarea id="service-address" required minLength={15} maxLength={600}
             placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน ตำบล จุดสังเกต และรหัสไปรษณีย์"
             value={values.service_address}
-            onChange={event => { update("service_address", event.target.value); setDistance(null); }}/>
+            onChange={event => { update("service_address", event.target.value); setDistance(null); setLocationConfirmed(false); setCustomerCoords(null); }}/>
           <small>สำนักงานช่าง: {dayNeramitBusiness.officeAddress} · <a href={dayNeramitBusiness.officeMapUrl} target="_blank" rel="noopener noreferrer">ดูตำแหน่งสำนักงานบน Google Maps</a></small>
         </div>
         <div className="card" style={{margin:"14px 0"}}>
@@ -314,7 +314,9 @@ export default function BookingPage() {
           {geoMessage && <p className="notice" role="status">{geoMessage}</p>}
           {distance && <div className="notice" role="status">
             ระยะทางขับรถจากสำนักงานโดยประมาณ: {(distance.distanceMeters / 1000).toFixed(2)} กม.
-            <p>{distance.estimateStatus === "EXCESS_DISTANCE_REVIEW"
+            <p>{mode === "BOOKING"
+              ? "ค่าออกตรวจจะขึ้นอยู่กับเวลาที่ลูกค้ายืนยันเรียกช่างและฐานช่างที่ได้รับมอบหมาย"
+              : distance.estimateStatus === "EXCESS_DISTANCE_REVIEW"
               ? "เกิน 5 กม. ต้องรอทีมงานตรวจสอบค่าเดินทาง"
               : distance.estimateStatus === "ESTIMATE"
                 ? `ค่าออกตรวจเบื้องต้น ${distance.estimateFeeBaht} บาท (ยังไม่ใช่ราคาที่อนุมัติ)`
