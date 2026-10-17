@@ -31,7 +31,11 @@ function ok(result, context) {
 }
 function sql(query) {
   const result = spawnSync("psql", ["-X", "-v", "ON_ERROR_STOP=1", "-At"], {
-    input: query, encoding: "utf8", env: { ...process.env, PGDATABASE: status.DB_URL },
+    input: query, encoding: "utf8", env: {
+      ...process.env, PGHOST: db.hostname, PGPORT: db.port,
+      PGUSER: decodeURIComponent(db.username),
+      PGPASSWORD: decodeURIComponent(db.password), PGDATABASE: db.pathname.slice(1),
+    },
   });
   assert.equal(result.status, 0, "local fixture/query SQL failed: " + result.stderr);
   return result.stdout.trim();
