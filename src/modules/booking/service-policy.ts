@@ -1,15 +1,15 @@
 /**
- * Owner-confirmed policy, 2026-10-16 (latest instruction supersedes 21:00).
+ * Owner-confirmed policy, 2026-10-17 (supersedes PR #6's 22:00 boundary).
  * Pure reference calculations only; no booking, assignment or billing writes.
  * A future server command must load tenant policy and verified road routing from
  * trusted sources, then persist the disclosed fee and customer approval.
  */
 export const SERVICE_POLICY = {
-  version: "2026-10-16-22h",
+  version: "2026-10-17-21h",
   timeZone: "Asia/Bangkok",
   dispatchHours: "10:00–02:00",
-  ordinaryHours: "10:00–21:59",
-  nightHours: "22:00–01:59",
+  ordinaryHours: "10:00–20:59",
+  nightHours: "21:00–01:59",
   includedRoadMeters: 5_000,
   ordinaryFeeBaht: 299,
   nightFeeBaht: 499,
@@ -27,8 +27,8 @@ const bangkokClock = new Intl.DateTimeFormat("en-GB", {
 export function dispatchWindow(instant: Date): DispatchWindow {
   if (!Number.isFinite(instant.getTime())) throw new Error("INVALID_DISPATCH_INSTANT");
   const hour = Number(bangkokClock.format(instant));
-  if (hour >= 10 && hour < 22) return "ORDINARY";
-  if (hour >= 22 || hour < 2) return "NIGHT";
+  if (hour >= 10 && hour < 21) return "ORDINARY";
+  if (hour >= 21 || hour < 2) return "NIGHT";
   return "CLOSED";
 }
 

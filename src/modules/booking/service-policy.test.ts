@@ -5,15 +5,16 @@ describe("Bangkok new-dispatch clock", () => {
   it.each([
     ["2026-10-16T09:59:59.999+07:00", "CLOSED"],
     ["2026-10-16T10:00:00+07:00", "ORDINARY"],
-    ["2026-10-16T21:00:00+07:00", "ORDINARY"],
-    ["2026-10-16T21:59:59.999+07:00", "ORDINARY"],
-    ["2026-10-16T22:00:00+07:00", "NIGHT"],
+    ["2026-10-16T20:59:59+07:00", "ORDINARY"],
+    ["2026-10-16T20:59:59.999+07:00", "ORDINARY"],
+    ["2026-10-16T21:00:00+07:00", "NIGHT"],
     ["2026-10-16T23:59:59.999+07:00", "NIGHT"],
     ["2026-10-17T00:00:00+07:00", "NIGHT"],
     ["2026-10-17T01:59:59.999+07:00", "NIGHT"],
     ["2026-10-17T02:00:00+07:00", "CLOSED"],
     ["2026-12-31T17:00:00Z", "NIGHT"],
-    ["2026-10-16T15:00:00Z", "NIGHT"],
+    ["2026-10-16T14:00:00Z", "NIGHT"],
+    ["2026-10-16T21:59:59+07:00", "NIGHT"],
   ])("%s => %s, independent of server timezone", (instant, expected) => {
     expect(dispatchWindow(new Date(instant))).toBe(expected);
   });
@@ -27,12 +28,12 @@ describe("Bangkok new-dispatch clock", () => {
   });
 });
 describe("inspection estimate guardrails", () => {
-  const daytime = new Date("2026-10-16T21:59:59+07:00");
+  const daytime = new Date("2026-10-16T20:59:59+07:00");
   it.each([0, 4999, 5000])("quotes 299 for %s verified road metres", (distance) => {
     expect(estimateCallout(daytime, distance)).toEqual({ status: "ESTIMATE", feeBaht: 299 });
   });
   it("quotes 499 at the night boundary", () => {
-    expect(estimateCallout(new Date("2026-10-16T22:00:00+07:00"), 5000))
+    expect(estimateCallout(new Date("2026-10-16T21:00:00+07:00"), 5000))
       .toEqual({ status: "ESTIMATE", feeBaht: 499 });
   });
   it.each([5000.01, 5001, 10000])("does not activate unapproved excess-distance pricing: %s", (distance) => {

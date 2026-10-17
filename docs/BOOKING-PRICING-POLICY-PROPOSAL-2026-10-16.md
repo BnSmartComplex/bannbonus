@@ -10,11 +10,11 @@ Advance booking REQUEST is free. Request is NOT a confirmed booking. Human opera
 
 ## Owner-confirmed dispatch/inspection fees (THB)
 - Ordinary-rate service: 299 THB for road-route distance up to 5 km from assigned contractor's registered office/dispatch base to customer location.
-- Night-rate service: 499 THB for the same first 5 km, during 22:00–01:59:59; new immediate dispatch closes at 02:00.
+- Night-rate service: 499 THB for the same first 5 km, during 21:00–01:59:59; new immediate dispatch closes at 02:00.
 - Beyond 5 km: propose +10 THB per additional road-route kilometer (configurable; exact rounding not yet approved).
 - Determine night pricing at customer's confirmed dispatch time; show itemized calculation before approval.
 - After 02:00, no NEW immediate emergency dispatch requests accepted; previously accepted work may continue. The confirmed 02:00:00 boundary is closed.
-- CONFIRMED staffed dispatch hours: every day 10:00–02:00 next day (Asia/Bangkok). Ordinary rate 10:00–21:59:59; night rate 22:00–01:59:59; close new immediate dispatch at 02:00. Advance booking request form may remain online outside these hours without implying dispatch availability.
+- CONFIRMED staffed dispatch hours: every day 10:00–02:00 next day (Asia/Bangkok). Ordinary rate 10:00–20:59:59; night rate 21:00–01:59:59; close new immediate dispatch at 02:00. Advance booking request form may remain online outside these hours without implying dispatch availability.
 - Advance booking intake may remain online 24/7 while actual staffed hours are separately displayed.
 
 ## Completion incentive
@@ -28,7 +28,7 @@ After customer agrees to repair and job is completed, apply a fixed 100 THB disc
 - Technician minimum compensation, payment collection, tax treatment, refunds, and platform commission are OPEN DECISIONS.
 
 ## Implementation requirements (not implemented by this document)
-Backend-authoritative configurable pricing with effective dates and tenant/zone rules; distance via actual road routing; booking vs dispatch state machine; operator approval; audit logs; versioned quote approvals; discount eligibility tied to completed job; customer and technician UI; test coverage for 5km threshold, 22:00 and 02:00 boundaries, cross-midnight dates, rounding, discount cap, cancellations, and failed payment. Avoid putting prices solely in UI. No production deploy without human review.
+Backend-authoritative configurable pricing with effective dates and tenant/zone rules; distance via actual road routing; booking vs dispatch state machine; operator approval; audit logs; versioned quote approvals; discount eligibility tied to completed job; customer and technician UI; test coverage for 5km threshold, 21:00 and 02:00 boundaries, cross-midnight dates, rounding, discount cap, cancellations, and failed payment. Avoid putting prices solely in UI. No production deploy without human review.
 
 ## Google Business Profile
 Not updated. Business owner confirmed 10:00–02:00 next day EVERY DAY. User identifies office map listing as 'ช่างเดย์เนรมิตร'; the supplied link resolves to the English Maps listing 'Day Neramit'. Confirm listing ownership and identity before updating Google Business Profile; do not confuse DayNeramit's listing with BannBonus's business profile. Google hours must reflect actual staffed operation, not 24-hour online request form. Require authorized business owner and verified access before changing listing.
@@ -42,12 +42,12 @@ Owner labels this location 'ช่างเดย์เนรมิตร'. Live
 
 ## Owner confirmation — 2026-10-16
 - Confirmed operating hours: daily 10:00–02:00 next day (Asia/Bangkok).
-- Confirmed ordinary call-out fee: THB 299 for first 5 km, 10:00–21:59:59.
-- Confirmed emergency/night call-out fee: starts at THB 499 for first 5 km, 22:00–01:59:59.
+- Confirmed ordinary call-out fee: THB 299 for first 5 km, 10:00–20:59:59.
+- Confirmed emergency/night call-out fee: starts at THB 499 for first 5 km, 21:00–01:59:59.
 - Confirmed advance booking request is free, distinct from paid call-out/inspection.
 - Confirmed 02:00 is closing boundary for NEW immediate dispatch requests; existing accepted jobs may continue.
 - Beyond 5 km +THB 10/km remains PROPOSED; rounding and actual road routing must be approved/verified before operational billing.
 - Google Business Profile remains NOT UPDATED; no live price changes, database changes, or production deployment were made.
 
-## Superseding owner instruction
-The latest MASTER TASK specifies **22:00**, replacing the earlier 21:00 draft boundary. This edit follows that explicit instruction. It does not approve distance rounding, deposits, commissions, production deployment or automatic billing.
+## Superseding owner instruction — 2026-10-17
+The current owner request explicitly confirms **21:00**, superseding PR #6's 22:00 boundary. Excess-distance billing remains disabled; production deployment is not authorized.
