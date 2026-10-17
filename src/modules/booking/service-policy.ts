@@ -7,7 +7,7 @@
  * Route and any extra-distance charge still require verified road travel and consent.
  */
 export const SERVICE_POLICY = {
-  version: "2026-10-18-realtime-click",
+  version: "2026-10-18-approved-overage-10-ceil",
   timeZone: "Asia/Bangkok",
   dispatchHours: "10:00–02:00",
   ordinaryHours: "10:00–20:59",
@@ -16,7 +16,7 @@ export const SERVICE_POLICY = {
   ordinaryFeeBaht: 299,
   nightFeeBaht: 499,
   completedRepairLaborDiscountBaht: 100,
-  extraDistance: { status: "PENDING_OWNER_APPROVAL", proposedBahtPerKm: 10 },
+  extraDistance: { status: "OWNER_APPROVED", bahtPerKm: 10, rounding: "CEIL_KILOMETRE" },
 } as const;
 
 export type DispatchWindow = "ORDINARY" | "NIGHT" | "CLOSED";
