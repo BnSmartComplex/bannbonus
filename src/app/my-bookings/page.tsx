@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CalendarClock, CheckCircle2, Clock, XCircle, ArrowRight } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
-type นัดหมายItem={
+type BookingItem={
  id:string;category:string;area:string;fault_description:string;
  status:string;request_mode:"IMMEDIATE"|"BOOKING";created_at:string;
  desired_start:string|null;desired_end:string|null;
@@ -16,8 +16,8 @@ const statusLabels:Record<string,string>={
  DECLINED:"ทีมงานไม่สามารถรับงาน",CANCELLED:"คำขอถูกยกเลิก"
 };
 function localDate(iso:string|null){return iso?new Date(iso).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"ยังไม่ระบุ";}
-export default function MyนัดหมายsPage(){
- const [rows,setRows]=useState<นัดหมายItem[]>([]);
+export default function MyBookingsPage(){
+ const [rows,setRows]=useState<BookingItem[]>([]);
  const [message,setMessage]=useState("กำลังตรวจสอบสิทธิ์และโหลด นัดหมาย…");
  const [busy,setBusy]=useState<string|null>(null);
  const [filter,setFilter]=useState<"ALL"|"IMMEDIATE"|"BOOKING">("ALL");
@@ -30,7 +30,7 @@ export default function MyนัดหมายsPage(){
    .select("id,category,area,fault_description,status,request_mode,created_at,desired_start,desired_end,alternative_start,alternative_end,alternative_status")
    .eq("customer_id",user.id).order("created_at",{ascending:false});
   if(error){setMessage("โหลดรายการจองไม่สำเร็จ กรุณาลองอีกครั้ง");return;}
-  setRows((data??[]) as นัดหมายItem[]);
+  setRows((data??[]) as BookingItem[]);
   setMessage(data?.length?"":"ยังยังไม่มีรายการเรียกช่างหรือนัดหมาย");
  },[]);
  useEffect(()=>{void load();const timer=window.setInterval(()=>void load(),20000);return()=>window.clearInterval(timer);},[load]);
