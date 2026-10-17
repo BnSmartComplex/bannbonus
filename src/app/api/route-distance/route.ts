@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 import { parseRouteDurationSeconds, previewOfficeDeparture } from "@/lib/office-route";
+import { approvedExtraDistancePolicy, realtimeQuote } from "@/lib/realtime-quote";
 
 export const runtime = "nodejs";
 
@@ -78,8 +79,10 @@ export async function POST(request: NextRequest) {
     }
     const seconds = parseRouteDurationSeconds(route.duration);
     if (seconds === null) return json({ error: "DRIVING_ETA_NOT_AVAILABLE" }, 422);
-    const departureNow = new Date();
-    const preview = previewOfficeDeparture(departureNow, route.distanceMeters!, seconds);
+    const serverNow = new Date();
+    const preview = previewOfficeDeparture(serverNow, route.distanceMeters!, seconds);
+    const { rate, rounding } = approvedExtraDistancePolicy(process.env);
+    const quote = realtimeQuote(serverNow, route.distanceMeters!, rate, rounding);
     return json({
       distanceMeters: route.distanceMeters,
       durationSeconds: seconds,
@@ -87,10 +90,12 @@ export async function POST(request: NextRequest) {
       originOfficeAddress: dayNeramitBusiness.officeAddress,
       originOfficeMapUrl: dayNeramitBusiness.officeMapUrl,
       provider: "GOOGLE_ROUTES",
-      calculatedAt: departureNow.toISOString(),
+      calculatedAt: serverNow.toISOString(),
+      pricing: quote,
+      approvedExcessRateBahtPerKm: rate,
       departureAt: preview.departureAt,
       estimatedArrivalAt: preview.estimatedArrivalAt,
-      notice: "ระยะทางและเวลาขับรถจากสำนักงานถึงลูกค้าเป็นการประมาณการ ราคาเรียลไทม์ยึดเวลาที่ระบบรับการกดเรียกช่าง และต้องยืนยันค่าเดินทางก่อนออกช่าง",
+      notice: "ระยะทางและเวลาขับรถจากสำนักงานถึงลูกค้าเป็นการประมาณการ ยอดรวมในหน้าต่างยืนยันคำนวณจากเวลาที่เซิร์ฟเวอร์รับคำขอ ไม่ใช่เวลาออกเดินทาง",
     }, 200);
   } catch {
     return json({ error: "ROUTE_PROVIDER_UNAVAILABLE" }, 503);
