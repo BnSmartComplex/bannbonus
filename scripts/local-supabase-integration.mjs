@@ -159,6 +159,10 @@ const expired = await fetch(api.origin + "/auth/v1/user", {
   headers: { apikey: status.ANON_KEY, Authorization: "Bearer " + session.access_token },
 });
 assert.ok([401, 403].includes(expired.status), "expired Auth token must be denied");
+// PostgREST documents 30 seconds of JWT clock skew. Verify rejection after
+// that window rather than treating its documented grace period as a bypass.
+// https://docs.postgrest.org/en/v12/references/auth.html#jwt-claims-validation
+await delay(Math.max(0, session.expires_at * 1000 + 32000 - Date.now()));
 const expiredRest = await fetch(api.origin + "/rest/v1/booking_requests?select=id", {
   headers: { apikey: status.ANON_KEY, Authorization: "Bearer " + session.access_token },
 });
