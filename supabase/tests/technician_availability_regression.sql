@@ -181,8 +181,8 @@ select throws_ok(
   $q$select public.dispatch_and_assign_technician(
     pg_temp.c1_id('conflict_booking'), pg_temp.c1_id('technician'),
     now() + interval '4 hours 30 minutes', now() + interval '5 hours 30 minutes')$q$,
-  'P0001', 'DISPATCH_INELIGIBLE:SCHEDULE_CONFLICT',
-  'dispatch conflict is rejected before assignment'
+  'P0001', 'DISPATCH_INELIGIBLE:ACTIVE_ASSIGNMENT,SCHEDULE_CONFLICT',
+  'dispatch conflict is rejected with all relevant blockers'
 );
 select is(
   (select count(*) from public.booking_appointments where booking_id = pg_temp.c1_id('dispatch_booking')),
