@@ -2,6 +2,15 @@ import Link from "next/link";
 import { ArrowUpRight, Clock3, ShieldCheck, Wind, Wrench, Waves, PlugZap, Refrigerator, WashingMachine, Laptop, PhoneCall, CalendarClock, ArrowRight } from "lucide-react";
 import { LiveAvailability } from "@/components/live-availability";
 
+const servicePhotos: Record<string,string> = {
+ AIR_CONDITIONER:"aircon-repair-800.webp",
+ ELECTRICAL:"electrical-800.webp",
+ PLUMBING:"plumbing-800.webp",
+ REFRIGERATOR:"appliance-800.webp",
+ WASHING_MACHINE:"washing-800.webp",
+ ELECTRONICS:"computer-800.webp",
+ OTHER:"general-repairs-800.webp",
+};
 const services = [
   { name: "เครื่องปรับอากาศ", description: "ล้าง ตรวจซ่อม ติดตั้งและย้ายแอร์", Icon: Wind, category: "AIR_CONDITIONER" },
   { name: "ไฟฟ้าภายในบ้าน", description: "ตรวจอาการและงานระบบไฟฟ้า", Icon: PlugZap, category: "ELECTRICAL" },
@@ -31,7 +40,7 @@ export default function HomePage() {
       </section>
       <section className="section-block" id="services">
         <div className="section-heading"><div><span className="section-kicker">OUR SERVICES</span><h2>บริการช่างครบวงจร</h2><p>เลือกประเภทงาน แจ้งอาการ และติดตามการรับงานได้ในระบบเดียว</p></div><Link href="/booking" className="section-link">ส่งคำขอ <ArrowRight size={17}/></Link></div>
-        <div className="service-grid">{services.map(({name,description,Icon,category}) => <Link key={category} href={`/booking?category=${category}`} className="service-card"><span className="service-icon"><Icon size={28} strokeWidth={1.6}/></span><strong>{name}</strong><p>{description}</p><span className="service-more">เรียกบริการ <ArrowUpRight size={16}/></span></Link>)}</div>
+        <div className="service-grid">{services.map(({name,description,Icon,category}) => <Link key={category} href={`/booking?category=${category}`} className="service-card"><span className="service-photo"><img loading="lazy" src={`https://chang.bannbonus.chatgpt.site/images/${servicePhotos[category]}`} alt={`ภาพประกอบงาน${name}`} /></span><span className="service-icon"><Icon size={28} strokeWidth={1.6}/></span><strong>{name}</strong><p>{description}</p><span className="service-more">เรียกบริการ <ArrowUpRight size={16}/></span></Link>)}</div>
       </section>
       <section className="two-panel">
         <div className="info-panel"><span className="section-kicker">REAL-TIME DISPATCH</span><h2>เรียกช่างทันที เมื่อสถานะพร้อม</h2><p>ช่างต้องออนไลน์ มีทักษะตรงพื้นที่ และไม่ติดงานหรือคิวซ้อน หากไม่ว่าง ระบบจะเปิดทางเลือก Booking โดยไม่สัญญาคิวที่ยังไม่ได้ยืนยัน</p><Link href="/booking?mode=IMMEDIATE" className="btn btn-gold">ตรวจสถานะและเรียกช่าง <ArrowRight size={18}/></Link></div>
