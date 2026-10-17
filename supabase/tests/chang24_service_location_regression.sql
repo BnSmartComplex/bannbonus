@@ -11,7 +11,7 @@ create function pg_temp.tomorrow(p time) returns timestamptz language sql stable
 as $q$ select (((now() at time zone 'Asia/Bangkok')::date+1)+p) at time zone 'Asia/Bangkok' $q$;
 insert into auth.users(id) select id from ids where label='customer';
 insert into public.tenants(id,name) values(pg_temp.uid('tenant'),'Isolated address-intake regression');
-select plan(11);
+select plan(15);
 
 select ok(not has_function_privilege('anon',
  'public.create_chang24_service_request(text,text,text,text,text,text,numeric,numeric,text,text,text[],boolean,uuid,text,timestamptz,timestamptz)',
@@ -19,6 +19,10 @@ select ok(not has_function_privilege('anon',
 select ok(has_function_privilege('authenticated',
  'public.create_chang24_service_request(text,text,text,text,text,text,numeric,numeric,text,text,text[],boolean,uuid,text,timestamptz,timestamptz)',
  'EXECUTE'), 'authenticated role can call location intake RPC');
+select has_column('public','booking_requests','realtime_clicked_at','server records final realtime click');
+select has_column('public','booking_requests','realtime_base_fee_baht','server records authoritative realtime tier');
+select is(public.booking_price_baht('2026-10-18T20:59:59+07'::timestamptz),299,'20:59:59 day rate');
+select is(public.booking_price_baht('2026-10-18T21:00:00+07'::timestamptz),499,'21:00:00 night rate');
 set local role authenticated;
 select set_config('request.jwt.claim.sub',pg_temp.uid('customer')::text,true);
 select is(public.join_operating_tenant_as_customer(),pg_temp.uid('tenant'),'customer enrolls once');
