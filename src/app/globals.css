@@ -20,3 +20,52 @@
 .hero-art p,.hero-art small{display:none}
 .hero-art{min-height:265px}
 @media(max-width:780px){.hero-art img{height:190px;width:245px}.hero-art{min-height:222px}}
+
+
+/* Customer mobile UX refinement: intentional hierarchy and one decision at a time. */
+.simple-login{min-height:calc(100vh - 320px);display:grid;place-items:center;padding:32px 0 80px}
+.login-shell{width:min(100%,470px);margin:0 auto;background:linear-gradient(155deg,#171a14,#0f110f);
+  border:1px solid #474133;border-radius:20px;padding:clamp(24px,6vw,44px);
+  box-shadow:0 14px 45px #0005}
+.login-shell h1{margin:6px 0 10px;font-size:clamp(28px,5vw,34px)}
+.login-shell .muted{margin:0 0 25px;line-height:1.65}
+.google-login-button{width:100%;min-height:56px;padding:13px 18px;display:flex;align-items:center;
+  justify-content:center;gap:14px;border:1px solid #e5e5e5;border-radius:10px;
+  font-size:16px;font-weight:700;background:#fff;color:#202124}
+.google-login-button:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
+.google-login-button:disabled{opacity:.65}
+.login-shell small.muted{display:block;margin:18px 0 0;font-size:12px}
+.booking-title{font-size:clamp(30px,6vw,40px);line-height:1.2;margin:8px 0 4px}
+.booking-intro{margin:3px 0 18px;color:#b9b8af;font-size:14px}
+.booking-availability-note{color:#dac79d;font-size:13px;margin:9px 0 18px;line-height:1.5}
+.request-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0 8px}
+.request-modes button{min-height:54px;padding:12px 8px;font-size:16px;border-radius:12px}
+.request-modes button:disabled{opacity:.36;cursor:not-allowed}
+.compact-availability{border:1px solid #424031;border-radius:12px;margin:12px 0;padding:12px 15px}
+.compact-availability summary,.terms-details summary{cursor:pointer;font-weight:700;color:#eac777}
+.compact-availability[open]{padding-bottom:2px}
+.booking-submit{display:flex;flex-direction:column;gap:9px;margin:20px 0 8px}
+.booking-submit .btn{width:100%;min-height:52px}
+.booking-submit small{color:#b6b3a9;line-height:1.6}
+.terms-details{border:1px solid #39362b;border-radius:12px;margin:16px 0 35px;padding:15px}
+.terms-details[open]{background:#11130f}
+.terms-details .card{margin-top:14px}
+@media(max-width:780px){
+  .site-header .site-nav{gap:7px;align-items:center}
+  .site-header .brand{font-size:17px}
+  .site-header .brand img{width:40px;height:40px}
+  .site-header .brand small{font-size:8px;letter-spacing:.8px}
+  .site-header .nav-links{margin:0;order:3;width:100%;justify-content:space-around;
+    border-top:1px solid #302d26;overflow:visible;gap:8px;padding:12px 0 4px;font-size:13px}
+  .site-header .nav-links a{padding:4px 7px}
+  .site-main>section:not(.gold-hero):not(.section-block):not(.steps-block):not(.cta-panel):not(.two-panel){padding-top:25px}
+  .simple-login{padding-top:24px;align-items:start}
+  .request-modes button{font-size:15px}
+}
+@media(max-width:380px){
+  .site-header .brand{font-size:15px}
+  .site-header .brand img{width:35px;height:35px}
+  .site-header .brand small{letter-spacing:.35px;font-size:7px}
+  .site-header .nav-links{font-size:12px}
+  .site-header .header-actions>a:not(.btn){font-size:12px}
+}
