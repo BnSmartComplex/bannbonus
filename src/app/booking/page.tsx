@@ -27,7 +27,7 @@ type FormValues = {
   fault_description: string;
   brand: string;
   model_number: string;
-  area: "NONTHABURI";
+  area: "BANGKOK" | "NONTHABURI";
   district: "BANG_YAI" | "BANG_BUA_THONG";
   service_address: string;
   contact_name: string;
