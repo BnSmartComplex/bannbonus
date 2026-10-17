@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
           cache: npm
@@ -39,7 +39,24 @@ jobs:
           npx --yes supabase@2.75.0 stop --help > /dev/null
           npx --yes supabase@2.75.0 init
           sed -i 's/^jwt_expiry = 3600$/jwt_expiry = 60/' supabase/config.toml
-          test "$(rg -c '^jwt_expiry = 60$' supabase/config.toml)" = 1
+          grep -q '^jwt_expiry = 60
+      - name: Start disposable Postgres, Auth, REST and Storage
+        run: |
+          npx --yes supabase@2.75.0 start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,inbucket > "$RUNNER_TEMP/supabase-start.log"
+          npx --yes supabase@2.75.0 status -o json > "$RUNNER_TEMP/supabase-local-status.json"
+          chmod 600 "$RUNNER_TEMP/supabase-local-status.json"
+      - name: Database regression tests
+        run: npx --yes supabase@2.75.0 test db
+      - name: Auth, Storage and two-session approval over HTTP
+        env:
+          SUPABASE_LOCAL_STATUS_FILE: ${{ runner.temp }}/supabase-local-status.json
+        run: node scripts/local-supabase-integration.mjs
+      - name: Destroy disposable containers and volumes
+        if: always()
+        run: |
+          npx --yes supabase@2.75.0 stop --no-backup
+          rm -f "$RUNNER_TEMP/supabase-local-status.json" "$RUNNER_TEMP/supabase-start.log"
+ supabase/config.toml
       - name: Start disposable Postgres, Auth, REST and Storage
         run: |
           npx --yes supabase@2.75.0 start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,inbucket > "$RUNNER_TEMP/supabase-start.log"
