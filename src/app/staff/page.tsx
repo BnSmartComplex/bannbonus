@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 
 type BookingItem = {
@@ -48,8 +49,9 @@ export default function StaffPage() {
     <section>
       <h1>ศูนย์รับคำขอทีมงาน</h1>
       <div className="notice">
-        หน้าจอนี้เป็น read-only และแสดงเฉพาะข้อมูลที่ผ่าน RLS; ยังไม่มี workflow ยืนยัน Booking หรือ audit การอนุมัติ
+        รายการคำขอนี้เป็นมุมมองอ่านอย่างเดียว การอนุมัติ Booking และสถานะงานช่างดำเนินการผ่านหน้าที่มีสิทธิ์เฉพาะ
       </div>
+      <p><Link className="btn" href="/operator/bookings">อนุมัติ Booking</Link>{" "}<Link className="btn" href="/technician/jobs">สถานะช่างและงานของฉัน</Link></p>
       <p aria-live="polite">{message}</p>
       {rows.map((item) => (
         <article className="card" key={item.id}>
