@@ -1,4 +1,4 @@
-import { estimateCallout, dispatchWindow } from "@/modules/booking/service-policy";
+import { estimateCallout, dispatchWindow } from "../modules/booking/service-policy";
 
 /** A Routes API Duration, e.g. "735s" or "735.5s". Never guess a missing ETA. */
 export function parseRouteDurationSeconds(duration: unknown): number | null {
