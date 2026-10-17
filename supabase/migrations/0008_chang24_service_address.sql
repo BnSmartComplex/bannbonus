@@ -19,7 +19,7 @@ alter table public.booking_requests
   check (service_address is null or char_length(btrim(service_address)) between 15 and 600),
   add constraint chang24_coordinates_paired check (
     (service_latitude is null and service_longitude is null)
-    or (service_latitude between 5 and 21 and service_longitude between 97 and 106)
+    or (service_latitude is not null and service_longitude is not null and service_latitude between 5 and 21 and service_longitude between 97 and 106)
   ),
   add constraint chang24_address_status_allowed
   check (address_verification_status in ('PENDING_OPERATOR_REVIEW','VERIFIED','REJECTED')),
@@ -65,7 +65,8 @@ begin
     raise exception 'SERVICE_ADDRESS_REQUIRED';
   end if;
   if not ((p_latitude is null and p_longitude is null) or
-    (p_latitude between 5 and 21 and p_longitude between 97 and 106)) then
+    (p_latitude is not null and p_longitude is not null
+      and p_latitude between 5 and 21 and p_longitude between 97 and 106)) then
     raise exception 'INVALID_CUSTOMER_COORDINATES';
   end if;
   -- Exact retry is idempotent only for identical destination/mode information.
