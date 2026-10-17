@@ -130,9 +130,12 @@ export default function BookingPage() {
   }
 
   function openDirections() {
-    if (!customerCoords) return;
+    if (!customerCoords && values.service_address.trim().length < 15) return;
     const origin = encodeURIComponent(dayNeramitBusiness.officeAddress);
-    const destination = encodeURIComponent(`${customerCoords.latitude},${customerCoords.longitude}`);
+    const districtName = values.district === "BANG_YAI" ? "อำเภอบางใหญ่" : "อำเภอบางบัวทอง";
+    const destination = encodeURIComponent(customerCoords && locationConfirmed
+      ? `${customerCoords.latitude},${customerCoords.longitude}`
+      : `${values.service_address.trim()}, ${districtName}, นนทบุรี`);
     window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`, "_blank", "noopener,noreferrer");
   }
 
@@ -318,7 +321,7 @@ export default function BookingPage() {
                 : "ยังไม่สามารถยืนยันราคาได้"}</p>
             <small>เส้นทางจากสำนักงานเป็นข้อมูลเบื้องต้น หากช่างออกจากฐานอื่น ต้องตรวจสอบระยะทางใหม่ก่อนยืนยันราคา</small>
           </div>}
-          {customerCoords && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางขับรถบน Google Maps</button></p>}
+          {(customerCoords || values.service_address.trim().length >= 15) && <p><button type="button" className="btn btn-outline" onClick={openDirections}>ดูเส้นทางและระยะทางบน Google Maps</button></p>}
           {!distance && <p className="muted">ยังไม่ยืนยันระยะทางตามถนนและค่าบริการ เจ้าหน้าที่จะตรวจสอบก่อนนัดหมายหรือออกเดินทาง</p>}
         </div>
         <div className="field">
@@ -336,7 +339,7 @@ export default function BookingPage() {
         </div>
         <label>
           <input type="checkbox" checked={values.consent} onChange={(event) => update("consent", event.target.checked)} />
-          {" "}ยินยอมให้ใช้ข้อมูลติดต่อและรูปภาพเพื่อดำเนินการตามคำขอนี้
+          {" "}ยินยอมให้ใช้ข้อมูลติดต่อ ที่อยู่ พิกัดตำแหน่งที่ฉันยืนยัน และรูปภาพเพื่อประสานงานกับช่าง
         </label>
         <p><button className="btn" type="submit" disabled={busy || !values.consent || Boolean(success)}>{busy ? "กำลังส่ง…" : mode === "IMMEDIATE" ? "เรียกช่าง" : "นัดหมายช่าง"}</button></p>
         </fieldset>
