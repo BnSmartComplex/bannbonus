@@ -22,13 +22,13 @@ export default function LoginPage() {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/booking`,
         },
       });
       setMessage(otpError
         ? "ส่งลิงก์ไม่สำเร็จ กรุณาลองอีกครั้งหรือติดต่อทีมงาน"
-        : "หากอีเมลนี้มีบัญชีที่ได้รับอนุญาต ระบบจะส่งลิงก์เข้าสู่ระบบให้");
+        : "หากระบบส่งอีเมลได้สำเร็จ กรุณาเปิดลิงก์ยืนยันเพื่อเข้าสู่ระบบ");
     } catch {
       setMessage("ส่งลิงก์ไม่สำเร็จ กรุณาลองอีกครั้งหรือติดต่อทีมงาน");
     } finally {
