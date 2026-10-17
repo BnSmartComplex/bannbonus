@@ -180,7 +180,7 @@ export default function BookingPage() {
         <button type="button" className={mode === "IMMEDIATE" ? "active" : ""} onClick={()=>{setMode("IMMEDIATE");resetIdempotencyKey();}}>เรียกช่างทันที</button>
         <button type="button" className={mode === "BOOKING" ? "active" : ""} onClick={()=>{setMode("BOOKING");resetIdempotencyKey();}}>Booking ล่วงหน้า 24 ชั่วโมง</button>
       </div>
-      <LiveAvailability compact category={values.category} area={values.area}/>
+      <LiveAvailability compact category={values.category} area={values.area} onAreaChange={area=>update("area",area)} onCategoryChange={category=>update("category",category)}/>
       <p className="notice">การส่งคำขอยังไม่ใช่การยืนยันมีช่างออกเดินทาง ทีมงานต้องตรวจสอบและช่างต้องรับงานก่อน</p>
       {!configured && <p className="notice" role="status">ระบบรับคำขออยู่ระหว่างเตรียมเปิดให้บริการ ยังส่งคำขอไม่ได้ในขณะนี้</p>}
       <p className="notice">
