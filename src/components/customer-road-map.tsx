@@ -157,6 +157,11 @@ export function CustomerRoadMap({
   return <div className="card" style={{margin:"16px 0",padding:16}}>
     <h3 style={{marginTop:0}}>แผนที่สำนักงานไปยังบ้านลูกค้า</h3>
     <p className="muted">แผนที่ OpenStreetMap แสดงชื่อถนน ซอย และสถานที่เป็นภาษาไทยเมื่อมีข้อมูล กดที่แผนที่เพื่อปักหมุดบ้านลูกค้าให้ตรงกับทางเข้ารถจริง</p>
+    <p className="notice" style={{marginBottom:10}}>
+      <strong>ต้นทาง — สำนักงานช่างเดย์เนรมิตร</strong>
+      <span style={{display:"block"}}>{dayNeramitBusiness.officeAddress}</span>
+      <span style={{display:"block"}}>ตำบลเสาธงหิน · อำเภอบางใหญ่ · จังหวัดนนทบุรี · หมู่ที่สำนักงาน: ยังไม่มีข้อมูลยืนยัน</span>
+    </p>
     <div ref={node} lang="th" role="application" aria-label="แผนที่เลือกที่อยู่ลูกค้า แสดงถนนและซอย" style={{height:385,width:"100%",borderRadius:12,overflow:"hidden",background:"#ddd"}}/>
     {error&&<p role="status" className="notice">{error}</p>}
     <p className="muted">หมุดสีทอง = สำนักงานช่างเดย์เนรมิตร · หมุดสีน้ำเงิน = บ้านลูกค้า · เส้นสีทอง = เส้นทางขับรถที่คำนวณได้</p>
