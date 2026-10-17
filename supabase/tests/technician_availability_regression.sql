@@ -35,6 +35,13 @@ insert into public.booking_appointments(
   pg_temp.c1_id('appointment'), pg_temp.c1_id('booking'), pg_temp.c1_id('tenant'),
   pg_temp.c1_id('technician'), now() + interval '2 hours', now() + interval '3 hours',
   299, pg_temp.c1_id('operator'));
+create function pg_temp.future_booking_slot(p_time time)
+returns timestamptz language sql stable
+as $q$
+  select (((now() at time zone 'Asia/Bangkok')::date + 1) + p_time)
+    at time zone 'Asia/Bangkok'
+$q$;
+
 select plan(26);
 
 set local role authenticated;
@@ -174,13 +181,13 @@ select is(
 select lives_ok(
   $q$select public.dispatch_and_assign_technician(
     pg_temp.c1_id('dispatch_booking'), pg_temp.c1_id('technician'),
-    now() + interval '4 hours', now() + interval '5 hours')$q$,
+    pg_temp.future_booking_slot('10:00'), pg_temp.future_booking_slot('11:00'))$q$,
   'eligible technician can be dispatched atomically'
 );
 select throws_ok(
   $q$select public.dispatch_and_assign_technician(
     pg_temp.c1_id('conflict_booking'), pg_temp.c1_id('technician'),
-    now() + interval '4 hours 30 minutes', now() + interval '5 hours 30 minutes')$q$,
+    pg_temp.future_booking_slot('10:30'), pg_temp.future_booking_slot('11:30'))$q$,
   'P0001', 'DISPATCH_INELIGIBLE:ACTIVE_ASSIGNMENT,SCHEDULE_CONFLICT',
   'dispatch conflict is rejected with all relevant blockers'
 );

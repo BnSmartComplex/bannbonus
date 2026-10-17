@@ -54,6 +54,13 @@ select
 from booking_test_ids
 where label in ('booking_a', 'booking_b', 'booking_c', 'booking_d');
 
+create function pg_temp.future_booking_slot(p_time time)
+returns timestamptz language sql stable
+as $q$
+  select (((now() at time zone 'Asia/Bangkok')::date + 1) + p_time)
+    at time zone 'Asia/Bangkok'
+$q$;
+
 select plan(42);
 set local role authenticated;
 
@@ -70,7 +77,7 @@ select set_config('request.jwt.claim.sub', '', true);
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_a'), pg_temp.test_id('technician'),
-    '2026-10-17T10:00+07', '2026-10-17T11:00+07'
+    pg_temp.future_booking_slot('10:00'), pg_temp.future_booking_slot('11:00')
   )$q$,
   'P0001', 'UNAUTHENTICATED', 'no actor denied'
 );
@@ -84,7 +91,7 @@ select throws_ok(
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_a'), pg_temp.test_id('technician'),
-    '2026-10-17T10:00+07', '2026-10-17T11:00+07'
+    pg_temp.future_booking_slot('10:00'), pg_temp.future_booking_slot('11:00')
   )$q$,
   'P0001', 'OPERATOR_FORBIDDEN', 'customer cannot approve'
 );
@@ -105,7 +112,7 @@ select is(
 select lives_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_a'), pg_temp.test_id('technician'),
-    '2026-10-17T10:00+07', '2026-10-17T11:00+07'
+    pg_temp.future_booking_slot('10:00'), pg_temp.future_booking_slot('11:00')
   )$q$,
   'first approval succeeds'
 );
@@ -130,14 +137,14 @@ select is(
 select lives_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_a'), pg_temp.test_id('technician'),
-    '2026-10-17T10:00+07', '2026-10-17T11:00+07'
+    pg_temp.future_booking_slot('10:00'), pg_temp.future_booking_slot('11:00')
   )$q$,
   'exact approval retry succeeds'
 );
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_a'), pg_temp.test_id('technician'),
-    '2026-10-17T12:00+07', '2026-10-17T13:00+07'
+    pg_temp.future_booking_slot('12:00'), pg_temp.future_booking_slot('13:00')
   )$q$,
   'P0001', 'APPROVAL_RETRY_MISMATCH',
   'different payload cannot masquerade as retry'
@@ -145,7 +152,7 @@ select throws_ok(
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_b'), pg_temp.test_id('technician'),
-    '2026-10-17T10:30+07', '2026-10-17T11:30+07'
+    pg_temp.future_booking_slot('10:30'), pg_temp.future_booking_slot('11:30')
   )$q$,
   'P0001', 'TECHNICIAN_TIME_CONFLICT',
   'same-tenant overlap denied'
@@ -153,7 +160,7 @@ select throws_ok(
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_c'), pg_temp.test_id('technician'),
-    '2026-10-17T10:30+07', '2026-10-17T11:30+07'
+    pg_temp.future_booking_slot('10:30'), pg_temp.future_booking_slot('11:30')
   )$q$,
   'P0001', 'TECHNICIAN_TIME_CONFLICT',
   'cross-tenant shared technician overlap denied'
@@ -161,21 +168,21 @@ select throws_ok(
 select lives_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_b'), pg_temp.test_id('technician'),
-    '2026-10-17T11:00+07', '2026-10-17T12:00+07'
+    pg_temp.future_booking_slot('11:00'), pg_temp.future_booking_slot('12:00')
   )$q$,
   'adjacent half-open interval allowed'
 );
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_d'), pg_temp.test_id('technician'),
-    null, '2026-10-17T12:00+07'
+    null, pg_temp.future_booking_slot('12:00')
   )$q$,
   'P0001', 'INVALID_TIME_RANGE', 'null range denied explicitly'
 );
 select throws_ok(
   $q$select public.approve_booking_and_assign_technician(
     pg_temp.test_id('booking_d'), pg_temp.test_id('technician'),
-    '2026-10-17T12:00+07', 'infinity'
+    pg_temp.future_booking_slot('12:00'), 'infinity'
   )$q$,
   'P0001', 'INVALID_TIME_RANGE', 'infinite range denied'
 );
@@ -219,8 +226,8 @@ select throws_ok(
     estimated_dispatch_fee_baht, actual_dispatch_fee_baht, payment_status, created_by
   ) values (
     pg_temp.test_id('booking_c'), pg_temp.test_id('tenant_b'),
-    pg_temp.test_id('technician'), '2026-10-17T10:30+07',
-    '2026-10-17T11:30+07', 299, null, 'NOT_CHARGED',
+    pg_temp.test_id('technician'), pg_temp.future_booking_slot('10:30'),
+    pg_temp.future_booking_slot('11:30'), 299, null, 'NOT_CHARGED',
     pg_temp.test_id('operator')
   )$q$,
   '23P01', null,
