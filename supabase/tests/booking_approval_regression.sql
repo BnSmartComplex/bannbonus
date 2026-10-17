@@ -54,7 +54,7 @@ select
 from booking_test_ids
 where label in ('booking_a', 'booking_b', 'booking_c', 'booking_d');
 
-select plan(40);
+select plan(42);
 set local role authenticated;
 
 select is(public.booking_price_baht('2026-10-17T10:00:00+07'), 299, '10:00 day boundary');
@@ -108,6 +108,19 @@ select is(
   (select status from public.booking_requests where id = pg_temp.test_id('booking_a')),
   'CONFIRMED',
   'booking confirmed'
+);
+select is(
+  (select estimated_dispatch_fee_baht from public.booking_appointments where booking_id = pg_temp.test_id('booking_a')),
+  299,
+  'scheduled start produces an estimate only'
+);
+select is(
+  (select count(*) from public.booking_appointments
+   where booking_id = pg_temp.test_id('booking_a')
+     and actual_dispatch_fee_baht is null
+     and payment_status = 'NOT_CHARGED'),
+  1::bigint,
+  'advance booking has no charge'
 );
 select lives_ok(
   $q$select public.approve_booking_and_assign_technician(
@@ -235,7 +248,7 @@ select lives_ok(
 select throws_ok(
   $q$select public.technician_update_appointment_status(
     pg_temp.test_id('appointment_a'), 'ASSIGNED')$q$,
-  'P0001', 'INVALID_APPOINTMENT_STATUS',
+  'P0001', 'INVALID_APPOINTMENT_TRANSITION',
   'backward transition is rejected'
 );
 select lives_ok(

@@ -17,8 +17,8 @@ function parseWallClock(value: string, label: string, time?: string): Date | Sch
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const timeMatch = time ? /^(\d{2}):(\d{2})$/.exec(time) : null;
-  if (time && !timeMatch) return { ok: false, message: "เวลาต้องเป็น HH:mm" };
+  const timeMatch = time !== undefined ? /^(\d{2}):(\d{2})$/.exec(time) : null;
+  if (time !== undefined && !timeMatch) return { ok: false, message: "เวลาต้องเป็น HH:mm" };
   const hour = timeMatch ? Number(timeMatch[1]) : 0;
   const minute = timeMatch ? Number(timeMatch[2]) : 0;
   if (hour > 23 || minute > 59) return { ok: false, message: "เวลาต้องเป็น HH:mm ที่ถูกต้อง" };
@@ -40,7 +40,7 @@ function parseWallClock(value: string, label: string, time?: string): Date | Sch
     actual.year !== match[1]
     || actual.month !== match[2]
     || actual.day !== match[3]
-    || (time && (
+    || (time !== undefined && (
       actual.hour !== timeMatch?.[1] || actual.minute !== timeMatch?.[2]
     ))
   ) {

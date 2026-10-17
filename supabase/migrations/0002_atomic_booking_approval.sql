@@ -225,7 +225,7 @@ declare
 begin
   if v_actor is null then raise exception 'UNAUTHENTICATED'; end if;
   if p_status is null
-    or p_status not in ('ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')
+    or p_status not in ('ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')
   then
     raise exception 'INVALID_APPOINTMENT_STATUS';
   end if;
