@@ -51,7 +51,7 @@ export default function StaffPage() {
       <div className="notice">
         รายการคำขอนี้เป็นมุมมองอ่านอย่างเดียว การอนุมัติ Booking และสถานะงานช่างดำเนินการผ่านหน้าที่มีสิทธิ์เฉพาะ
       </div>
-      <p><Link className="btn" href="/operator/bookings">อนุมัติ Booking</Link>{" "}<Link className="btn" href="/technician/jobs">สถานะช่างและงานของฉัน</Link></p>
+      <p><Link className="btn" href="/operator/bookings">อนุมัติ Booking</Link></p>
       <p aria-live="polite">{message}</p>
       {rows.map((item) => (
         <article className="card" key={item.id}>

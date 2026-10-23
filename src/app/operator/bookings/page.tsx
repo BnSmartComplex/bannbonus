@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { Clock3, CalendarCheck2, Send, RefreshCw } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { validateSchedule, type ScheduleDraft } from "@/lib/schedule";
@@ -93,7 +92,7 @@ export default function OperatorBookingsPage(){
  return <section className="operator-board">
   <span className="section-kicker">DAY NERAMIT · OPERATIONS</span><h1>ศูนย์รับงานและจัดการ Booking</h1>
   <p className="muted">รายการเรียกทันทีและ Booking ล่วงหน้าอยู่ในหน้าจอเดียว · ตรวจคิวและอนุมัติจาก Backend</p>
-  <div className="dashboard-actions"><button className="btn btn-outline" type="button" onClick={()=>void load()}><RefreshCw size={17}/> อัปเดตคำขอ</button><Link className="btn btn-outline" href="/technician/jobs">หน้าช่าง →</Link></div>
+  <div className="dashboard-actions"><button className="btn btn-outline" type="button" onClick={()=>void load()}><RefreshCw size={17}/> อัปเดตคำขอ</button></div>
   <p className="notice" role="status">{message}</p>
   <div className="request-modes" role="group" aria-label="กรองคำขอ"><button type="button" className={filter==="ALL"?"active":""} onClick={()=>setFilter("ALL")}>คำขอทั้งหมด</button><button type="button" className={filter==="IMMEDIATE"?"active":""} onClick={()=>setFilter("IMMEDIATE")}>เรียกช่างทันที</button><button type="button" className={filter==="BOOKING"?"active":""} onClick={()=>setFilter("BOOKING")}>Booking ล่วงหน้า</button></div>
   {bookings.filter(item=>filter==="ALL"||item.request_mode===filter).map(item=>{
