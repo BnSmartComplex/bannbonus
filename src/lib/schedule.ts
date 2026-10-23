@@ -67,3 +67,21 @@ export function validateSchedule(
   if (resolvedEnd <= startWithTime) return { ok: false, message: "เวลาสิ้นสุดต้องหลังเวลาเริ่ม" };
   return { ok: true, startIso: startWithTime.toISOString(), endIso: resolvedEnd.toISOString() };
 }
+
+export function validateBookingStart(
+  date: string,
+  startTime: string,
+  now = new Date(),
+): ScheduleValidation {
+  const start = parseWallClock(date, "วันเวลา", startTime);
+  if (!(start instanceof Date)) return start;
+  if (startTime < "10:00" || startTime > "19:00") {
+    return { ok: false, message: "เลือกเวลาเริ่มระหว่าง 10:00–19:00 น." };
+  }
+  if (start <= now) return { ok: false, message: "เวลาเริ่มต้องอยู่ในอนาคต" };
+  return {
+    ok: true,
+    startIso: start.toISOString(),
+    endIso: new Date(start.getTime() + 60 * 60 * 1000).toISOString(),
+  };
+}
