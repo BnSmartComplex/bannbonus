@@ -40,15 +40,16 @@ export function StaffPortalHome() {
 
   return <section style={{maxWidth:950,margin:"0 auto",padding:"45px 0 100px"}}>
     <span className="section-kicker">BANNBONUS · STAFF OPERATIONS</span>
-    <h1>ศูนย์จัดการงานช่างและผู้ดูแลระบบ</h1>
-    <p className="muted">พื้นที่สำหรับทีมช่างและ Admin เท่านั้น · ลูกค้าเรียกช่างและนัดหมายที่ <a href="https://chang24.vercel.app" style={{textDecoration:"underline"}}>chang24.vercel.app</a></p>
+    <h1>{status === "AUTHORIZED" ? "ศูนย์จัดการงานช่างและผู้ดูแลระบบ" : "เข้าสู่ระบบทีมงาน"}</h1>
+    <p className="muted">สำหรับทีมช่างและ Admin เท่านั้น · ลูกค้าเรียกช่างและนัดหมายที่ <a href="https://chang24.vercel.app" style={{textDecoration:"underline"}}>chang24.vercel.app</a></p>
     {status === "CHECKING" && <p className="notice" role="status">กำลังตรวจสอบบัญชีและสิทธิ์ทีมงาน…</p>}
     {status === "NO_CONFIG" && <p className="notice" role="alert">ระบบฝ่ายปฏิบัติการยังไม่ได้เชื่อมต่อฐานข้อมูล Production จึงไม่เปิดให้ใช้งานข้อมูลจริง</p>}
     {status === "LOGIN_REQUIRED" && <div className="card"><h2>กรุณาเข้าสู่ระบบทีมงาน</h2>
       <p>เฉพาะบัญชีที่ได้รับสิทธิ์ช่าง ผู้ประสานงาน หรือผู้ดูแลระบบเท่านั้น</p>
       <Link className="btn btn-gold" href="/login"><LogIn size={18}/> เข้าสู่ระบบ</Link></div>}
     {status === "FORBIDDEN" && <div className="card" role="alert">
-      <h2>บัญชีนี้ไม่มีสิทธิ์ทีมงาน</h2><p>กรุณาติดต่อผู้ดูแลระบบเพื่อกำหนดสิทธิ์ ไม่สามารถใช้งานหน้า Admin หรือหน้าช่างด้วยบัญชีลูกค้าทั่วไป</p>
+      <h2>บัญชีนี้ไม่มีสิทธิ์ทีมงาน</h2><p>ลูกค้าเรียกช่างและติดตามงานที่ Chang24</p>
+      <a className="btn btn-gold" href="https://chang24.vercel.app">ไปเว็บไซต์ Chang24</a>
     </div>}
     {status === "ERROR" && <p className="notice" role="alert">ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</p>}
     {status === "AUTHORIZED" && <div className="service-grid" aria-label="เมนูทีมงาน">

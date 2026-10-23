@@ -6,6 +6,8 @@ import { Phone, ArrowUpRight } from "lucide-react";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 import { portalMode } from "@/lib/portal-mode";
 import { StaffRoleGate } from "@/components/staff-role-gate";
+import { StaffNavLinks } from "@/components/staff-nav-links";
+import { CustomerRoleGate } from "@/components/customer-role-gate";
 import "./globals.css";
 
 const staff = portalMode() === "STAFF";
@@ -35,10 +37,7 @@ export default function RootLayout({children}: Readonly<{children:React.ReactNod
         <nav className="site-nav" aria-label="เมนูระบบงานช่าง">
           <Link className="brand" href="/"><span>BannBonus<small>STAFF · TECHNICIAN · ADMIN</small></span></Link>
           <div className="nav-links">
-            <Link href="/">หน้าหลักทีมงาน</Link>
-            <Link href="/operator/bookings">Admin / จัดการงาน</Link>
-            <Link href="/technician/jobs">งานช่าง</Link>
-            <Link href="/staff">ศูนย์รับงาน</Link>
+            <StaffNavLinks />
           </div>
           <div className="header-actions"><AuthControls/></div>
         </nav>
@@ -50,11 +49,11 @@ export default function RootLayout({children}: Readonly<{children:React.ReactNod
         <div className="header-actions"><a className="phone-link" href="tel:0924367468"><Phone size={16}/> 092-436-7468</a><AuthControls/><Link className="btn btn-gold header-cta" href="/booking">เรียกช่าง <ArrowUpRight size={16}/></Link></div>
       </nav></div></header>
     </>}
-    <main className="site-main shell">{staff ? <StaffRoleGate>{children}</StaffRoleGate> : children}</main>
+    <main className="site-main shell">{staff ? <StaffRoleGate>{children}</StaffRoleGate> : <CustomerRoleGate>{children}</CustomerRoleGate>}</main>
     {staff ? <footer className="site-footer">
       <div className="shell footer-grid">
         <div className="footer-brand"><strong>BannBonus · Team Operations</strong><p>สำหรับช่างและ Admin เท่านั้น</p></div>
-        <div><strong>เมนูทีมงาน</strong><Link href="/">ศูนย์งาน</Link><Link href="/operator/bookings">Admin / จัดการงาน</Link><Link href="/technician/jobs">งานของช่าง</Link></div>
+        <div><strong>เมนูทีมงาน</strong><Link href="/">ศูนย์งาน</Link></div>
         <div><strong>เว็บไซต์ลูกค้า</strong><a href="https://chang24.vercel.app" target="_blank" rel="noopener noreferrer">chang24.vercel.app</a></div>
       </div>
       <div className="footer-bottom">© 2026 BannBonus · Internal operations · ทุกการเข้าถึงขึ้นอยู่กับสิทธิ์ในฐานข้อมูล</div>
