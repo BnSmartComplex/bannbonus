@@ -18,7 +18,8 @@ export default function LoginPage() {
     }
     setBusy(true);
     try {
-      const next = staffPortal ? "/" : "/booking";
+      const requestedNext = new URLSearchParams(window.location.search).get("next");
+      const next = staffPortal ? "/" : requestedNext === "/my-bookings" ? "/my-bookings" : "/booking";
       const callback = new URL("/auth/callback", window.location.origin);
       callback.searchParams.set("next", next);
       const { error } = await supabase.auth.signInWithOAuth({
