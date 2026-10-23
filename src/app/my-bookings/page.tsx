@@ -53,7 +53,7 @@ export default function MyBookingsPage(){
   <div className="booking-list">{rows.filter(item=>filter==="ALL"||item.request_mode===filter).map(item=><article className="card booking-card" key={item.id}>
    <div className="booking-head"><div><span className="section-kicker">{item.request_mode==="IMMEDIATE"?"เรียกช่างทันที":"นัดหมายล่วงหน้า"}</span><h2>{item.category.replaceAll("_"," ")} · {item.area==="NONTHABURI"?"นนทบุรี":"กรุงเทพฯ"}</h2></div><span className={`booking-state ${item.status==="CONFIRMED"?"confirmed":""}`}>{statusLabels[item.status]??item.status}</span></div>
    <p className="muted">{item.fault_description}</p>
-   {item.request_mode==="BOOKING"&&<p className="booking-date"><CalendarClock size={17}/> เวลาที่ขอ: {localDate(item.desired_start)} – {localDate(item.desired_end)}</p>}
+   {item.request_mode==="BOOKING"&&<p className="booking-date"><CalendarClock size={17}/> เวลาเริ่มที่ขอ: {localDate(item.desired_start)} · รอทีมงานยืนยันช่วงนัด</p>}
    {item.alternative_start&&<div className="alternative-offer">
     <strong><Clock size={18}/> ทีมช่างเสนอวันหรือเวลาใหม่</strong>
     <p>{localDate(item.alternative_start)} – {localDate(item.alternative_end)}</p>
