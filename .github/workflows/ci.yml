@@ -8,6 +8,11 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        portal: [CUSTOMER, STAFF]
+    env:
+      NEXT_PUBLIC_APP_PORTAL: ${{ matrix.portal }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

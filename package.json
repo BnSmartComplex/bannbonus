@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "verify:portals": "node scripts/verify-portals.mjs",
     "test:booking-concurrency": "node scripts/booking-approval-concurrency.mjs"
   },
   "dependencies": {
