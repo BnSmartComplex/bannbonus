@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { GoogleIcon } from "@/components/google-icon";
 import { customerDestination } from "@/lib/customer-destination";
+import { customerLoginDestinationKey, oauthCallbackUrl } from "@/lib/portal-redirect";
 
 export default function LoginPage() {
   const staffPortal = process.env.NEXT_PUBLIC_APP_PORTAL === "STAFF";
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const autoStarted = useRef(false);
 
-  async function loginWithGoogle() {
+  const loginWithGoogle = useCallback(async (automatic = false) => {
     setMessage("");
     const supabase = getSupabase();
     if (!supabase) {
@@ -21,11 +23,12 @@ export default function LoginPage() {
     try {
       const requestedNext = new URLSearchParams(window.location.search).get("next");
       const next = staffPortal ? "/" : customerDestination(requestedNext);
-      const callback = new URL("/auth/callback", window.location.origin);
-      callback.searchParams.set("next", next);
+      if (!staffPortal) {
+        try { window.sessionStorage.setItem(customerLoginDestinationKey, next); } catch { /* The fixed callback still returns to booking. */ }
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
+        options: { redirectTo: oauthCallbackUrl(window.location.origin, staffPortal), ...(!automatic && { queryParams: { prompt: "select_account" } }) },
       });
       if (error) {
         setMessage("เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อทีมงาน");
@@ -36,7 +39,14 @@ export default function LoginPage() {
       setMessage("ไม่สามารถเชื่อมต่อ Google ได้ในขณะนี้ กรุณาลองใหม่");
       setBusy(false);
     }
-  }
+  }, [staffPortal]);
+
+  useEffect(() => {
+    if (staffPortal || autoStarted.current) return;
+    if (new URLSearchParams(window.location.search).get("auto") !== "1") return;
+    autoStarted.current = true;
+    void loginWithGoogle(true);
+  }, [staffPortal, loginWithGoogle]);
 
   return <section className="simple-login" aria-labelledby="login-title">
     <div className="login-shell">
