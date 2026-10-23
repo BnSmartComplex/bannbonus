@@ -9,7 +9,6 @@ import { booking } from "@/lib/validation";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 import { CustomerRoadMap, type RoadGeometry } from "@/components/customer-road-map";
 import { ExternalLink, MapPin, Pencil } from "lucide-react";
-import { type AddressSuggestion } from "@/lib/reverse-geocode";
 
 const categories = [
   ["OTHER", "อื่น ๆ / ไม่ทราบประเภท"],
@@ -94,7 +93,6 @@ export default function BookingPage() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [geoMessage, setGeoMessage] = useState("");
-  const [suggestedAddress, setSuggestedAddress] = useState<AddressSuggestion | null>(null);
   const [checkingDistance, setCheckingDistance] = useState(false);
   const [distance, setDistance] = useState<RouteQuote | null>(null);
   const [popup, setPopup] = useState<PricePopup | null>(null);
@@ -185,12 +183,13 @@ export default function BookingPage() {
   }
 
   function selectOnMap(point: {latitude:number;longitude:number}) {
+    locationLookupId.current += 1;
     setCustomerCoords(point);
     setLocationConfirmed(false);
     setDistance(null);
-    setGeoMessage("ปักหมุดแล้ว กำลังค้นหาที่อยู่ใกล้เคียง…");
+    setCheckingDistance(false);
+    setGeoMessage("ปักหมุดแล้ว โปรดกรอกที่อยู่ให้ครบ ตรวจสอบจุดนัดบนแผนที่ แล้วกดยืนยัน");
     resetIdempotencyKey();
-    void lookupAddress(point);
   }
 
   function fullServiceAddress() {
@@ -202,68 +201,28 @@ export default function BookingPage() {
     return parts.filter(Boolean).join(" ");
   }
 
-  async function lookupAddress(point: {latitude:number;longitude:number}) {
-    const lookupId = ++locationLookupId.current;
-    setSuggestedAddress(null);
-    setCheckingDistance(true);
-    try {
-      const supabase = getSupabase();
-      const { data: { session } } = supabase
-        ? await supabase.auth.getSession()
-        : { data: { session: null } };
-      if (!session) throw new Error("LOGIN_REQUIRED");
-      const response = await fetch("/api/reverse-geocode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify(point),
-        cache: "no-store",
-      });
-      const result: AddressSuggestion | null = response.ok ? await response.json() as AddressSuggestion : null;
-      if (!result || typeof result.address !== "string" || !["STREET", "AREA"].includes(result.level)) {
-        throw new Error("ADDRESS_NOT_FOUND");
-      }
-      if (lookupId !== locationLookupId.current) return;
-      setSuggestedAddress(result);
-      if (result.level === "STREET") {
-        setValues(current => current.service_address.trim() ? current : { ...current, service_address: result.address });
-      }
-      setLocationConfirmed(false);
-      setGeoMessage(result.level === "STREET"
-        ? "พบที่อยู่ใกล้เคียง โปรดตรวจสอบบ้านเลขที่และทางเข้าก่อนยืนยัน"
-        : "พบพื้นที่ใกล้เคียง แต่ไม่มีบ้านเลขที่หรือชื่อถนน กรุณากรอกที่อยู่จริงก่อนยืนยัน");
-    } catch {
-      if (lookupId === locationLookupId.current) {
-        setGeoMessage("ได้พิกัดแล้ว แต่ยังค้นหาที่อยู่ไม่ได้ กรุณากรอกที่อยู่เองและตรวจสอบหมุดก่อนยืนยัน");
-      }
-    } finally {
-      if (lookupId === locationLookupId.current) setCheckingDistance(false);
-    }
-  }
-
   function useMyLocation() {
     const requestId = ++locationLookupId.current;
     setDistance(null);
     setGeoMessage("");
     setLocationConfirmed(false);
-    setSuggestedAddress(null);
     setCustomerCoords(null);
     if (!navigator.geolocation) {
       setGeoMessage("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง กรุณากรอกที่อยู่เพื่อให้เจ้าหน้าที่ตรวจสอบ");
       return;
     }
     setCheckingDistance(true);
-    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
       if (requestId !== locationLookupId.current) return;
       const point = { latitude: coords.latitude, longitude: coords.longitude };
       setCustomerCoords(point);
       resetIdempotencyKey();
-      setGeoMessage("ได้รับพิกัดแล้ว กำลังค้นหาที่อยู่ใกล้เคียง…");
-      await lookupAddress(point);
+      setGeoMessage("ได้รับพิกัดแล้ว โปรดเปิดแผนที่ตรวจสอบจุดนัด กรอกที่อยู่ให้ครบ แล้วกดยืนยัน");
+      setCheckingDistance(false);
     }, () => {
       if (requestId !== locationLookupId.current) return;
       locationLookupId.current += 1;
       setCustomerCoords(null);
-      setSuggestedAddress(null);
       setGeoMessage("ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณากรอกที่อยู่ให้ครบเพื่อให้เจ้าหน้าที่ตรวจสอบ");
       setCheckingDistance(false);
     }, { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 });
@@ -540,7 +499,7 @@ export default function BookingPage() {
         </div>
         <div className="field booking-location">
           <label>ตำแหน่งที่ต้องการให้ช่างไป</label>
-          <p className="muted">เมื่ออยู่ที่สถานที่นัด ใช้ GPS ได้ หรือเลือกจุดบนแผนที่หากอยู่ที่อื่น เมื่อกด GPS พิกัดจะถูกส่งไปยังบริการแผนที่เพื่อค้นที่อยู่หรือพื้นที่ใกล้เคียง</p>
+          <p className="muted">เมื่ออยู่ที่สถานที่นัด ใช้ GPS ได้ หรือเลือกจุดบนแผนที่หากอยู่ที่อื่น โปรดตรวจสอบพิกัดและกรอกที่อยู่ให้ครบ</p>
           <div className="booking-location-actions">
             <button className="btn btn-outline" type="button" onClick={useMyLocation} disabled={checkingDistance}>
               <MapPin size={17}/>{checkingDistance ? "กำลังหาตำแหน่ง…" : "ใช้ GPS ปัจจุบัน"}
@@ -552,20 +511,10 @@ export default function BookingPage() {
             onPick={selectOnMap}/>}
           {customerCoords && <div className="booking-location-result">
             <strong>ตำแหน่งที่เลือก</strong>
-            {suggestedAddress && <p className="booking-location-address">
-              <small>{suggestedAddress.level === "STREET" ? "ที่อยู่ใกล้เคียงจากแผนที่" : "พื้นที่ใกล้เคียง (ไม่ใช่ที่อยู่บ้าน)"}</small><br/>
-              {suggestedAddress.address}
-            </p>}
             <p className="booking-location-coordinates">{customerCoords.latitude.toFixed(6)}, {customerCoords.longitude.toFixed(6)}</p>
             <a className="inline-link" href={`https://www.google.com/maps/search/?api=1&query=${customerCoords.latitude}%2C${customerCoords.longitude}`}
               target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/>เปิดพิกัดบนแผนที่</a>
             <div className="booking-location-actions">
-              {suggestedAddress?.level === "STREET" && values.service_address.trim() !== suggestedAddress.address &&
-                <button className="btn btn-outline" type="button" onClick={() => {
-                  update("service_address", suggestedAddress.address);
-                  setLocationConfirmed(false);
-                  setDistance(null);
-                }}>ใช้ที่อยู่นี้</button>}
               <button className="btn btn-outline" type="button" onClick={() => addressField.current?.focus()}>
                 <Pencil size={16}/>แก้ไขที่อยู่
               </button>
