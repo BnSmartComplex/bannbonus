@@ -9,6 +9,7 @@ import { booking } from "@/lib/validation";
 import { dayNeramitBusiness } from "@/lib/day-neramit-business";
 import { CustomerRoadMap, type RoadGeometry } from "@/components/customer-road-map";
 import { ExternalLink, MapPin, Pencil } from "lucide-react";
+import { parseDeviceLocality } from "@/lib/device-locality";
 
 const categories = [
   ["OTHER", "อื่น ๆ / ไม่ทราบประเภท"],
@@ -93,6 +94,7 @@ export default function BookingPage() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [geoMessage, setGeoMessage] = useState("");
+  const [suggestedArea, setSuggestedArea] = useState<string | null>(null);
   const [checkingDistance, setCheckingDistance] = useState(false);
   const [distance, setDistance] = useState<RouteQuote | null>(null);
   const [popup, setPopup] = useState<PricePopup | null>(null);
@@ -185,6 +187,7 @@ export default function BookingPage() {
   function selectOnMap(point: {latitude:number;longitude:number}) {
     locationLookupId.current += 1;
     setCustomerCoords(point);
+    setSuggestedArea(null);
     setLocationConfirmed(false);
     setDistance(null);
     setCheckingDistance(false);
@@ -206,19 +209,38 @@ export default function BookingPage() {
     setDistance(null);
     setGeoMessage("");
     setLocationConfirmed(false);
+    setSuggestedArea(null);
     setCustomerCoords(null);
     if (!navigator.geolocation) {
       setGeoMessage("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง กรุณากรอกที่อยู่เพื่อให้เจ้าหน้าที่ตรวจสอบ");
       return;
     }
     setCheckingDistance(true);
-    navigator.geolocation.getCurrentPosition(({ coords }) => {
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
       if (requestId !== locationLookupId.current) return;
       const point = { latitude: coords.latitude, longitude: coords.longitude };
       setCustomerCoords(point);
       resetIdempotencyKey();
-      setGeoMessage("ได้รับพิกัดแล้ว โปรดเปิดแผนที่ตรวจสอบจุดนัด กรอกที่อยู่ให้ครบ แล้วกดยืนยัน");
-      setCheckingDistance(false);
+      setGeoMessage("ได้รับพิกัดแล้ว กำลังค้นหาพื้นที่ใกล้เคียง…");
+      try {
+        const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+        url.searchParams.set("latitude", String(point.latitude));
+        url.searchParams.set("longitude", String(point.longitude));
+        url.searchParams.set("localityLanguage", "th");
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error("LOCALITY_UNAVAILABLE");
+        const suggestion = parseDeviceLocality(await response.json(), point);
+        if (!suggestion) throw new Error("LOCALITY_NOT_FOUND");
+        if (requestId !== locationLookupId.current) return;
+        setSuggestedArea(suggestion.area);
+        setGeoMessage("พบพื้นที่ใกล้เคียง แต่ยังไม่มีบ้านเลขที่หรือชื่อถนน โปรดกรอกที่อยู่จริงและตรวจสอบพิกัดก่อนยืนยัน");
+      } catch {
+        if (requestId === locationLookupId.current) {
+          setGeoMessage("ได้พิกัดแล้ว แต่ค้นหาพื้นที่ไม่ได้ กรุณากรอกที่อยู่เองและตรวจสอบพิกัดก่อนยืนยัน");
+        }
+      } finally {
+        if (requestId === locationLookupId.current) setCheckingDistance(false);
+      }
     }, () => {
       if (requestId !== locationLookupId.current) return;
       locationLookupId.current += 1;
@@ -499,7 +521,7 @@ export default function BookingPage() {
         </div>
         <div className="field booking-location">
           <label>ตำแหน่งที่ต้องการให้ช่างไป</label>
-          <p className="muted">เมื่ออยู่ที่สถานที่นัด ใช้ GPS ได้ หรือเลือกจุดบนแผนที่หากอยู่ที่อื่น โปรดตรวจสอบพิกัดและกรอกที่อยู่ให้ครบ</p>
+          <p className="muted">เมื่ออยู่ที่สถานที่นัด ใช้ GPS ได้ หรือเลือกจุดบนแผนที่หากอยู่ที่อื่น เมื่อกด GPS พิกัดและ IP จะส่งจากอุปกรณ์ไป BigDataCloud เพื่อค้นพื้นที่ใกล้เคียง</p>
           <div className="booking-location-actions">
             <button className="btn btn-outline" type="button" onClick={useMyLocation} disabled={checkingDistance}>
               <MapPin size={17}/>{checkingDistance ? "กำลังหาตำแหน่ง…" : "ใช้ GPS ปัจจุบัน"}
@@ -511,6 +533,7 @@ export default function BookingPage() {
             onPick={selectOnMap}/>}
           {customerCoords && <div className="booking-location-result">
             <strong>ตำแหน่งที่เลือก</strong>
+            {suggestedArea && <p className="booking-location-address"><small>พื้นที่ใกล้เคียง (ไม่ใช่ที่อยู่บ้าน)</small><br/>{suggestedArea}</p>}
             <p className="booking-location-coordinates">{customerCoords.latitude.toFixed(6)}, {customerCoords.longitude.toFixed(6)}</p>
             <a className="inline-link" href={`https://www.google.com/maps/search/?api=1&query=${customerCoords.latitude}%2C${customerCoords.longitude}`}
               target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/>เปิดพิกัดบนแผนที่</a>
