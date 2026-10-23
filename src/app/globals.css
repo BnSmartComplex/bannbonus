@@ -49,6 +49,8 @@
 .booking-submit small{color:#b6b3a9;line-height:1.6}
 .terms-details{border:1px solid #39362b;border-radius:12px;margin:16px 0 35px;padding:15px}
 .terms-details[open]{background:#11130f}
+.booking-location-actions{display:flex;flex-wrap:wrap;gap:10px}.booking-location-actions .btn{display:inline-flex;align-items:center;gap:8px}.booking-location .customer-map{min-width:0}
+.schedule-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .terms-details .card{margin-top:14px}
 @media(max-width:780px){
   .site-header .site-nav{gap:7px;align-items:center}
