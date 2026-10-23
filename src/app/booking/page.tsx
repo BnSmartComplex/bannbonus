@@ -57,7 +57,7 @@ type FormValues = {
   brand: string;
   model_number: string;
   area: "BANGKOK" | "NONTHABURI";
-  district: "BANG_YAI" | "BANG_BUA_THONG";
+  district: "" | "BANG_YAI" | "BANG_BUA_THONG";
   service_address: string;
   contact_name: string;
   contact_phone: string;
@@ -82,7 +82,7 @@ export default function BookingPage() {
     brand: "",
     model_number: "",
     area: "NONTHABURI",
-    district: "BANG_YAI",
+    district: "",
     service_address: "",
     contact_name: "",
     contact_phone: "",
@@ -233,6 +233,10 @@ export default function BookingPage() {
       setError("กรุณากรอกที่อยู่บ้านหรือจุดนัดหมายให้ครบก่อนเรียกช่าง");
       return;
     }
+    if (!values.district) {
+      setError("กรุณาเลือกพื้นที่ให้บริการให้ตรงกับจุดหมาย");
+      return;
+    }
     if (!customerCoords || !locationConfirmed) {
       setError("กรุณาปักหมุดตำแหน่งบ้านลูกค้าและยืนยันหมุดบนแผนที่ก่อนเรียกช่างทันที");
       return;
@@ -343,6 +347,7 @@ export default function BookingPage() {
       }
 
       if (values.service_address.trim().length < 15) throw new Error("กรุณากรอกที่อยู่หรือจุดสังเกตให้ช่างหาสถานที่ได้");
+      if (!values.district) throw new Error("กรุณาเลือกพื้นที่ให้บริการให้ตรงกับจุดหมาย");
       const confirmedAddress=fullServiceAddress();
       if (confirmedAddress.length > 600) throw new Error("ที่อยู่ยาวเกิน 600 ตัวอักษร กรุณาย่อรายละเอียด");
       if (mode==="IMMEDIATE" && (!locationConfirmed || !customerCoords)) throw new Error("เรียกช่างทันทีต้องยืนยันหมุดบ้านก่อน");
@@ -470,6 +475,7 @@ export default function BookingPage() {
           <label htmlFor="district">พื้นที่ให้บริการ *</label>
           <select id="district" required value={values.district}
             onChange={(event) => { update("district", event.target.value as FormValues["district"]); setDistance(null); setLocationConfirmed(false); setCustomerCoords(null); }}>
+            <option value="" disabled>เลือกพื้นที่</option>
             <option value="BANG_YAI">บางใหญ่</option>
             <option value="BANG_BUA_THONG">บางบัวทอง</option>
           </select>
