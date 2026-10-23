@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
+import { customerDestination } from "@/lib/customer-destination";
 
 type State = "CHECKING" | "READY" | "LOGIN" | "STAFF" | "UNAVAILABLE";
 
@@ -11,9 +12,11 @@ export function CustomerRoleGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const protectedPage = pathname === "/booking" || pathname === "/my-bookings";
   const [status, setStatus] = useState<State>("CHECKING");
+  const [destination, setDestination] = useState(pathname);
 
   useEffect(() => {
     if (!protectedPage) return;
+    setDestination(customerDestination(window.location.pathname + window.location.search));
     let active = true;
     const supabase = getSupabase();
     if (!supabase) {
@@ -45,7 +48,7 @@ export function CustomerRoleGate({ children }: { children: ReactNode }) {
     {status === "LOGIN" && <>
       <h1>เข้าสู่ระบบก่อนส่งคำขอ</h1>
       <p>เข้าสู่ระบบแล้วกลับมากรอกรายละเอียดงานที่นี่</p>
-      <Link className="btn btn-gold" href={`/login?next=${encodeURIComponent(pathname)}`}>เข้าสู่ระบบด้วย Google</Link>
+      <Link className="btn btn-gold" href={`/login?next=${encodeURIComponent(destination)}`}>เข้าสู่ระบบด้วย Google</Link>
     </>}
     {status === "STAFF" && <>
       <h1>บัญชีทีมงาน</h1>

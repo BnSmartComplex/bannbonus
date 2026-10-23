@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { GoogleIcon } from "@/components/google-icon";
+import { customerDestination } from "@/lib/customer-destination";
 
 export default function LoginPage() {
   const staffPortal = process.env.NEXT_PUBLIC_APP_PORTAL === "STAFF";
@@ -19,7 +20,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       const requestedNext = new URLSearchParams(window.location.search).get("next");
-      const next = staffPortal ? "/" : requestedNext === "/my-bookings" ? "/my-bookings" : "/booking";
+      const next = staffPortal ? "/" : customerDestination(requestedNext);
       const callback = new URL("/auth/callback", window.location.origin);
       callback.searchParams.set("next", next);
       const { error } = await supabase.auth.signInWithOAuth({

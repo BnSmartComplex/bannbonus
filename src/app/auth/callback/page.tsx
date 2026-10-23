@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
+import { customerDestination } from "@/lib/customer-destination";
 
 export default function AuthCallbackPage() {
   const [message, setMessage] = useState("กำลังยืนยันการเข้าสู่ระบบ…");
@@ -10,8 +11,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     let active=true;
     const next = new URLSearchParams(window.location.search).get("next");
-    // Prevent redirect to arbitrary external URL.
-    const dest = next && /^\/(?!\/)[a-zA-Z0-9/_-]*$/.test(next) ? next : "/";
+    const dest = process.env.NEXT_PUBLIC_APP_PORTAL === "STAFF" ? "/" : customerDestination(next);
     const supabase = getSupabase();
     if (!supabase) { setMessage("ยังไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้"); return; }
     void (async () => {
