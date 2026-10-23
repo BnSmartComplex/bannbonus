@@ -518,10 +518,12 @@ export default function BookingPage() {
             value={values.soi} onChange={e=>update("soi",e.target.value)}/>
           <small>หากชื่อซอยไม่มีใน OpenStreetMap ให้กรอกตามป้ายจริง ลูกค้ายืนยันเอง</small>
         </div>
+        <details key={mode} open={mode === "IMMEDIATE"} className="terms-details">
+          <summary>{mode === "IMMEDIATE" ? "ยืนยันหมุดบ้านสำหรับเรียกช่าง" : "เพิ่มหมุดแผนที่หรือดูระยะทาง (ไม่จำเป็น)"}</summary>
         <CustomerRoadMap point={customerCoords} route={distance?.geometry??null}
           onPick={selectOnMap} subdistrict={values.subdistrict}
           moo={values.village_group} soi={values.soi}/>
-        <div className="card" style={{margin:"14px 0"}}>
+        <div style={{margin:"14px 0"}}>
           <strong>ตำแหน่งบ้านและระยะทาง</strong>
           <p className="muted">กดอนุญาตตำแหน่งจากอุปกรณ์เฉพาะเมื่อคุณอยู่ที่บ้านหรือสถานที่นัด หากไม่อยู่ที่นั่นให้กรอกที่อยู่ไว้ก่อนเพื่อให้ทีมงานตรวจสอบ</p>
           <button className="btn btn-outline" type="button" onClick={useMyLocation} disabled={checkingDistance}>
@@ -557,6 +559,7 @@ export default function BookingPage() {
           </details>:null}
           {!distance && <p className="muted">หากยังไม่แสดงระยะทางจากเส้นทางรถจริง จะยังไม่ยืนยันราคา เจ้าหน้าที่ต้องตรวจสอบก่อนออกเดินทาง</p>}
         </div>
+        </details>
         <div className="field">
           <label htmlFor="contact-name">ชื่อผู้ติดต่อ *</label>
           <input id="contact-name" required autoComplete="name" maxLength={120} value={values.contact_name} onChange={(event) => update("contact_name", event.target.value)} />
