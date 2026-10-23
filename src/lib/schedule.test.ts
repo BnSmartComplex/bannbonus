@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateSchedule } from "./schedule";
+import { validateBookingStart, validateSchedule } from "./schedule";
 
 describe("Asia/Bangkok schedule validation", () => {
   const now = new Date("2026-10-17T00:00:00.000Z");
@@ -37,5 +37,32 @@ describe("Asia/Bangkok schedule validation", () => {
     expect(validateSchedule({
       date: "2026-10-16", startTime: "14:00", endTime: "15:00",
     }, now).ok).toBe(false);
+  });
+});
+
+describe("customer booking start", () => {
+  const now = new Date("2026-10-17T00:00:00.000Z");
+
+  it("creates an internal one-hour request window from the selected start", () => {
+    expect(validateBookingStart("2026-10-17", "14:00", now)).toEqual({
+      ok: true,
+      startIso: "2026-10-17T07:00:00.000Z",
+      endIso: "2026-10-17T08:00:00.000Z",
+    });
+  });
+
+  it("accepts the final advertised start time", () => {
+    expect(validateBookingStart("2026-10-17", "19:00", now)).toEqual({
+      ok: true,
+      startIso: "2026-10-17T12:00:00.000Z",
+      endIso: "2026-10-17T13:00:00.000Z",
+    });
+  });
+
+  it("rejects starts outside the selected hours, invalid dates, and past starts", () => {
+    expect(validateBookingStart("2026-10-17", "09:59", now).ok).toBe(false);
+    expect(validateBookingStart("2026-10-17", "19:01", now).ok).toBe(false);
+    expect(validateBookingStart("2026-02-30", "14:00", now).ok).toBe(false);
+    expect(validateBookingStart("2026-10-16", "14:00", now).ok).toBe(false);
   });
 });
