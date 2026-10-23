@@ -78,14 +78,11 @@ function localizeThai(map:MapInstance) {
 }
 
 export function CustomerRoadMap({
-  point,route,onPick,subdistrict,moo,soi,
+  point,route,onPick,
 }:{
   point:MapPoint|null;
   route:RoadGeometry|null;
   onPick:(point:MapPoint)=>void;
-  subdistrict:string;
-  moo:string;
-  soi:string;
 }) {
   const node=useRef<HTMLDivElement>(null);
   const map=useRef<MapInstance|null>(null);
@@ -156,7 +153,7 @@ export function CustomerRoadMap({
     }
   },[route,point,mapReady]);
 
-  return <div className="card" style={{margin:"16px 0",padding:16}}>
+  return <div className="customer-map" style={{margin:"16px 0"}}>
     <h3 style={{marginTop:0}}>แผนที่สำนักงานไปยังบ้านลูกค้า</h3>
     <p className="muted">แผนที่ OpenStreetMap แสดงชื่อถนน ซอย และสถานที่เป็นภาษาไทยเมื่อมีข้อมูล กดที่แผนที่เพื่อปักหมุดบ้านลูกค้าให้ตรงกับทางเข้ารถจริง</p>
     <p className="notice" style={{marginBottom:10}}>
@@ -169,8 +166,7 @@ export function CustomerRoadMap({
     <p className="muted">หมุดสีทอง = สำนักงานช่างเดย์เนรมิตร · หมุดสีน้ำเงิน = บ้านลูกค้า · เส้นสีทอง = เส้นทางขับรถที่คำนวณได้</p>
     {point ? <div className="notice" aria-live="polite">
       <strong>พิกัดบ้านลูกค้าที่เลือก</strong> {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
-      <p>ตำบล: {subdistrict.trim()||"รอลูกค้ายืนยัน"} · หมู่ที่: {moo.trim()||"ไม่ระบุ / ไม่มีข้อมูล"} · ซอย: {soi.trim()||"รอลูกค้ายืนยัน"}</p>
     </div> : <p className="notice">กรุณาปักหมุดตำแหน่งบ้านบนแผนที่ หรือกดใช้ตำแหน่งจากมือถือเมื่ออยู่หน้าบ้าน</p>}
-    <small>ข้อมูลแผนที่ © OpenStreetMap contributors · การแสดงชื่อซอย/ตำบลขึ้นอยู่กับข้อมูลที่มีอยู่ใน OSM หมู่ที่ต้องยืนยันกับลูกค้า ไม่ประมาณจากพิกัด</small>
+    <small>ข้อมูลแผนที่ © OpenStreetMap contributors · ชื่อถนนและสถานที่อาจไม่ครบ กรุณาตรวจสอบจุดหมายก่อนยืนยัน</small>
   </div>;
 }
