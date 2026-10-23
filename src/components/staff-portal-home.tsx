@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { ClipboardList, HardHat, ShieldCheck, LogIn, RefreshCw } from "lucide-react";
+import { redirectCustomerToChang24 } from "@/lib/portal-redirect";
 
 type StaffRole = "operator" | "tenant_admin" | "technician";
 type StaffState = "CHECKING" | "LOGIN_REQUIRED" | "NO_CONFIG" | "FORBIDDEN" | "AUTHORIZED" | "ERROR";
@@ -29,6 +30,7 @@ export function StaffPortalHome() {
       const permitted = (data ?? []).map(x => x.role)
         .filter((x): x is StaffRole => x === "tenant_admin" || x === "operator" || x === "technician");
       setRoles(permitted);
+      if (!permitted.length && redirectCustomerToChang24()) return;
       setStatus(permitted.length ? "AUTHORIZED" : "FORBIDDEN");
     } catch { setStatus("ERROR"); }
     finally { setBusy(false); }
